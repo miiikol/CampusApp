@@ -2,6 +2,7 @@ package com.example.campus.core.di
 
 import android.app.Application
 import androidx.room.Room
+import com.example.campus.BuildConfig
 import com.example.campus.core.common.Constants
 import com.example.campus.data.local.AppDatabase
 import com.example.campus.data.local.dao.*
@@ -24,9 +25,6 @@ import javax.inject.Singleton
  * - OkHttpClient（含日志拦截器与超时设置）
  * - Retrofit（绑定基础 URL 与 Gson 转换器）
  * - Room 数据库与各 DAO
- *
- * 注意：
- * - 日志拦截器级别为 BODY，仅用于开发调试；生产环境应降低或移除，避免输出敏感信息
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -35,14 +33,19 @@ object AppModule {
     @Provides
     @Singleton
     fun provideOkHttpClient(): OkHttpClient {
-        return OkHttpClient.Builder()
-            .addInterceptor(HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BODY
-            })
+        val builder = OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
-            .build()
+
+        // Debug 构建输出 BODY 日志以便调试；Release 仅输出 HEADERS，不泄露敏感数据
+        if (BuildConfig.DEBUG) {
+            builder.addInterceptor(HttpLoggingInterceptor().apply {
+                level = HttpLoggingInterceptor.Level.BODY
+            })
+        }
+
+        return builder.build()
     }
 
     @Provides
