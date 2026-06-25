@@ -25,6 +25,9 @@ local.properties
 .DS_Store
 Thumbs.db
 
+# Build error logs
+build_error*.txt
+
 # Env files (if any)
 *.env
 

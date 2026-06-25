@@ -97,4 +97,4 @@ class LostFoundRepository @Inject constructor(
         val part = MultipartBody.Part.createFormData("file", filename, requestBody)
         return api.uploadImage(part).url
     }
-}。
+}
