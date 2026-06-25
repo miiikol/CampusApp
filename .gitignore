@@ -1,0 +1,32 @@
+# Gradle
+.gradle/
+.gradle-user-home/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Android
+app/build/
+app/release/
+local.properties
+*.apk
+*.aab
+*.jks
+*.keystore
+
+# Kotlin
+.kotlin/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env files (if any)
+*.env
+
+# Logs
+campus_api/logs/

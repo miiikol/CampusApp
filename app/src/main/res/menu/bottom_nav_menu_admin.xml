@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_admin"
+        android:icon="@android:drawable/ic_menu_manage"
+        android:title="@string/nav_admin" />
+    <item
+        android:id="@+id/nav_publish_news"
+        android:icon="@android:drawable/ic_menu_edit"
+        android:title="发布资讯" />
+    <item
+        android:id="@+id/nav_profile"
+        android:icon="@android:drawable/ic_menu_myplaces"
+        android:title="@string/nav_profile" />
+</menu>

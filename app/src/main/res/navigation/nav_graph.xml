@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/loginFragment">
+
+    <fragment
+        android:id="@+id/nav_course"
+        android:name="com.example.campus.ui.course.CourseFragment"
+        android:label="Course"
+        tools:layout="@layout/fragment_course"
+        xmlns:tools="http://schemas.android.com/tools" />
+
+    <fragment
+        android:id="@+id/nav_news"
+        android:name="com.example.campus.ui.news.NewsFragment"
+        android:label="News"
+        tools:layout="@layout/fragment_news"
+        xmlns:tools="http://schemas.android.com/tools" />
+
+    <fragment
+        android:id="@+id/nav_publish_news"
+        android:name="com.example.campus.ui.news.PublishNewsFragment"
+        android:label="发布资讯"
+        tools:layout="@layout/fragment_publish_news"
+        xmlns:tools="http://schemas.android.com/tools" />
+
+    <fragment
+        android:id="@+id/newsDetailFragment"
+        android:name="com.example.campus.ui.news.NewsDetailFragment"
+        android:label="资讯详情"
+        tools:layout="@layout/fragment_news_detail"
+        xmlns:tools="http://schemas.android.com/tools">
+        <argument
+            android:name="newsId"
+            android:defaultValue=""
+            app:argType="string" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/nav_market"
+        android:name="com.example.campus.ui.market.MarketFragment"
+        android:label="Market"
+        tools:layout="@layout/fragment_market"
+        xmlns:tools="http://schemas.android.com/tools" />
+
+    <fragment
+        android:id="@+id/marketDetailFragment"
+        android:name="com.example.campus.ui.market.MarketDetailFragment"
+        android:label="商品详情"
+        tools:layout="@layout/fragment_market_detail"
+        xmlns:tools="http://schemas.android.com/tools">
+        <argument
+            android:name="marketId"
+            android:defaultValue=""
+            app:argType="string" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/nav_lostfound"
+        android:name="com.example.campus.ui.lostfound.LostFoundFragment"
+        android:label="Lost &amp; Found"
+        tools:layout="@layout/fragment_lost_found"
+        xmlns:tools="http://schemas.android.com/tools" />
+
+    <fragment
+        android:id="@+id/nav_admin"
+        android:name="com.example.campus.ui.admin.AdminFragment"
+        android:label="Admin"
+        tools:layout="@layout/fragment_admin"
+        xmlns:tools="http://schemas.android.com/tools" />
+
+    <fragment
+        android:id="@+id/nav_profile"
+        android:name="com.example.campus.ui.profile.ProfileFragment"
+        android:label="Profile"
+        tools:layout="@layout/fragment_profile"
+        xmlns:tools="http://schemas.android.com/tools" />
+
+    <fragment
+        android:id="@+id/loginFragment"
+        android:name="com.example.campus.ui.auth.LoginFragment"
+        android:label="Login"
+        tools:layout="@layout/fragment_login"
+        xmlns:tools="http://schemas.android.com/tools">
+        <action
+            android:id="@+id/action_loginFragment_to_forgotPasswordFragment"
+            app:destination="@id/forgotPasswordFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/forgotPasswordFragment"
+        android:name="com.example.campus.ui.auth.ForgotPasswordFragment"
+        android:label="找回密码"
+        tools:layout="@layout/fragment_forgot_password"
+        xmlns:tools="http://schemas.android.com/tools" />
+
+    <fragment
+        android:id="@+id/mapPickerFragment"
+        android:name="com.example.campus.ui.map.MapPickerFragment"
+        android:label="选择位置"
+        tools:layout="@layout/fragment_map_picker"
+        xmlns:tools="http://schemas.android.com/tools" />
+
+    <fragment
+        android:id="@+id/mapViewerFragment"
+        android:name="com.example.campus.ui.map.MapViewerFragment"
+        android:label="查看位置"
+        tools:layout="@layout/fragment_map_viewer"
+        xmlns:tools="http://schemas.android.com/tools">
+        <argument
+            android:name="latitude"
+            android:defaultValue="0.0"
+            app:argType="string" />
+        <argument
+            android:name="longitude"
+            android:defaultValue="0.0"
+            app:argType="string" />
+        <argument
+            android:name="title"
+            android:defaultValue=""
+            app:argType="string" />
+        <argument
+            android:name="address"
+            android:defaultValue=""
+            app:argType="string" />
+    </fragment>
+</navigation>

@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">校园助手</string>
+    
+    <!-- Navigation -->
+    <string name="nav_course">课程</string>
+    <string name="nav_news">资讯</string>
+    <string name="nav_market">集市</string>
+    <string name="nav_lost_found">失物招领</string>
+    <string name="nav_admin">管理</string>
+    <string name="nav_profile">我的</string>
+
+    <!-- Login Screen -->
+    <string name="login_welcome">欢迎\n回来</string>
+    <string name="login_subtitle">登录您的校园账户</string>
+    <string name="login_student_id_hint">学号</string>
+    <string name="login_password_hint">密码</string>
+    <string name="login_button">登录</string>
+    <string name="login_forgot_password">忘记密码？</string>
+    <string name="logging_in">登录中...</string>
+    <string name="login_success">登录成功！</string>
+
+    <string name="forgot_password_title">找回密码</string>
+    <string name="forgot_password_subtitle">请输入学号、姓名和身份证号进行身份核验后重置密码</string>
+    <string name="forgot_password_subtitle_identity">请输入学号、姓名和身份证号进行身份核验后重置密码</string>
+    <string name="forgot_password_full_name_hint">姓名</string>
+    <string name="forgot_password_id_card_hint">身份证号</string>
+    <string name="forgot_password_new_password_hint">新密码</string>
+    <string name="forgot_password_confirm_password_hint">确认新密码</string>
+    <string name="forgot_password_reset_button">重置密码</string>
+    <string name="forgot_password_resetting">重置中...</string>
+    <string name="forgot_password_reset_success">重置成功</string>
+    <string name="forgot_password_reset_failed">重置失败</string>
+    <string name="forgot_password_back_to_login">返回登录</string>
+
+    <!-- Item Placeholders (Lost & Found) -->
+    <string name="lost_found_type">丢失</string>
+    <string name="lost_found_title_placeholder">丢失钱包</string>
+    <string name="lost_found_location_placeholder">地点：图书馆</string>
+    <string name="lost_found_desc_placeholder">失物描述...</string>
+    <string name="lost_found_contact_placeholder">联系方式：123-456-7890</string>
+
+    <!-- Item Placeholders (News) -->
+    <string name="news_title_placeholder">新闻标题</string>
+    <string name="news_summary_placeholder">新闻摘要...</string>
+    <string name="news_date_placeholder">2023-10-27</string>
+
+    <!-- Item Placeholders (Market) -->
+    <string name="market_item_name_placeholder">商品名称</string>
+    <string name="market_price_placeholder">¥99.99</string>
+    <string name="market_desc_placeholder">商品描述...</string>
+    <string name="market_seller_placeholder">卖家：张三</string>
+
+    <string name="profile_title">个人中心</string>
+    <string name="profile_hint">你可以在这里查看账号信息，后续会逐步补充更多设置项。</string>
+    <string name="profile_logout">退出登录</string>
+    <string name="profile_logout_success">已退出登录</string>
+    <string name="profile_username_placeholder">用户名：</string>
+    <string name="profile_student_id_placeholder">学号：</string>
+    <string name="profile_role_placeholder">身份：</string>
+    <string name="profile_username">用户名：%1$s</string>
+    <string name="profile_student_id">学号：%1$s</string>
+    <string name="profile_role">身份：%1$s</string>
+    <string name="profile_username_empty">用户名：未登录</string>
+    <string name="profile_student_id_empty">学号：-</string>
+    <string name="profile_role_empty">身份：-</string>
+
+    <string name="role_student">学生</string>
+    <string name="role_admin">管理员</string>
+
+    <string name="admin_title">管理员工作台</string>
+    <string name="admin_subtitle">当前提供审核与管理入口，后续可逐步扩展。</string>
+    <string name="admin_review_title">内容审核</string>
+    <string name="admin_review_desc">对资讯、失物招领、二手商品等内容进行审核。</string>
+    <string name="admin_manage_title">系统管理</string>
+    <string name="admin_manage_desc">管理用户、公告与基础配置（后续完善）。</string>
+    <string name="admin_refresh">刷新待审核</string>
+    <string name="admin_empty">暂无待审核内容</string>
+    <string name="admin_approve">通过</string>
+    <string name="admin_reject">驳回</string>
+
+    <string name="news_comments_title">评论区</string>
+    <string name="news_comment_hint">说点什么...</string>
+    <string name="news_comment_send">发送</string>
+    <string name="news_comment_ban">封禁评论</string>
+
+    <string name="course_prev_week">上一周</string>
+    <string name="course_next_week">下一周</string>
+    <string name="course_week_format">第%1$d周</string>
+    <string name="course_select_week">选择周次</string>
+
+    <string-array name="week_days">
+        <item></item>
+        <item>周一</item>
+        <item>周二</item>
+        <item>周三</item>
+        <item>周四</item>
+        <item>周五</item>
+        <item>周六</item>
+        <item>周日</item>
+    </string-array>
+</resources>

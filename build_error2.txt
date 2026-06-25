@@ -1,0 +1,27 @@
+﻿
+[Incubating] Problems report is available at: file:///C:/Users/Lenovo-PC/Desktop/Graduation%20Project/CampusApp/build/reports/problems/problems-report.html
+System.Management.Automation.RemoteException
+FAILURE: Build failed with an exception.
+System.Management.Automation.RemoteException
+* What went wrong:
+A problem occurred configuring root project 'CampusApp'.
+> Could not resolve all artifacts for configuration 'classpath'.
+   > Could not resolve com.android.tools.build:gradle:8.3.0.
+     Required by:
+         root project : > com.android.application:com.android.application.gradle.plugin:8.3.0
+      > Dependency requires at least JVM runtime version 11. This build uses a Java 9 JVM.
+System.Management.Automation.RemoteException
+* Try:
+> Run this build using a Java 11 or newer JVM.
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.13/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+System.Management.Automation.RemoteException
+BUILD FAILED in 3s
