@@ -79,7 +79,7 @@ if ($method === 'POST' && $path === '/admin/reviews/action') {
 }
 
 if ($method === 'POST' && preg_match('#^/admin/comments/([^/]+)/ban$#', $path, $matches)) {
-  ensureNewsCommentsTable();
+
   $commentId = trim((string)$matches[1]);
   $body = jsonBody();
   $adminId = trim((string)($body['adminId'] ?? ''));

@@ -1,22 +1,14 @@
 <?php
 
 /**
- * 基于数据库的 IP 速率限制（无需 Redis）
+ * 速率限制（APCu 优先，数据库降级）
+ *
+ * - 优先使用 APCu 内存计数器，适合百人以上并发
+ * - APCu 不可用时降级为数据库方案
+ * - 数据库表通过 migrate.php 预先创建，请求内不再执行 DDL
  *
  * rateLimit('login', 5, 60) — 同一 IP 每 60 秒最多 5 次
  */
-
-function ensureRateLimitTable(): void {
-  db()->exec("
-    CREATE TABLE IF NOT EXISTS rate_limits (
-      id BIGINT PRIMARY KEY AUTO_INCREMENT,
-      ip VARCHAR(64) NOT NULL,
-      `key` VARCHAR(64) NOT NULL,
-      hit_at BIGINT NOT NULL,
-      INDEX idx_ip_key (ip, `key`, hit_at)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-  ");
-}
 
 /**
  * 检查并记录速率限制
@@ -27,9 +19,54 @@ function ensureRateLimitTable(): void {
  * @return bool true=允许, false=超过限制
  */
 function rateLimit(string $key, int $maxAttempts, int $windowSec): bool {
-  ensureRateLimitTable();
-
   $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+
+  if (function_exists('apcu_enabled') && apcu_enabled()) {
+    return rateLimitApcu($ip, $key, $maxAttempts, $windowSec);
+  }
+
+  return rateLimitDb($ip, $key, $maxAttempts, $windowSec);
+}
+
+/**
+ * APCu 内存计数器（高并发首选）
+ */
+function rateLimitApcu(string $ip, string $key, int $maxAttempts, int $windowSec): bool {
+  $cacheKey = "rl:{$ip}:{$key}";
+  $now = time();
+  $windowStart = $now - $windowSec;
+
+  // 使用 APCu key + TTL 实现滑动窗口
+  // 格式: "count|windowStart"
+  $current = apcu_fetch($cacheKey);
+  if ($current === false) {
+    apcu_store($cacheKey, "1|{$now}", $windowSec);
+    return true;
+  }
+
+  $parts = explode('|', $current);
+  $count = (int)($parts[0] ?? 1);
+  $storedWindowStart = (int)($parts[1] ?? $now);
+
+  // 如果窗口已过期，重置计数
+  if ($storedWindowStart < $windowStart) {
+    apcu_store($cacheKey, "1|{$now}", $windowSec);
+    return true;
+  }
+
+  if ($count >= $maxAttempts) {
+    return false;
+  }
+
+  // 原子递增
+  apcu_inc($cacheKey, 1, $success, $windowSec);
+  return true;
+}
+
+/**
+ * 数据库降级方案（APCu 不可用时使用）
+ */
+function rateLimitDb(string $ip, string $key, int $maxAttempts, int $windowSec): bool {
   $now = now_ms();
   $windowStart = $now - ($windowSec * 1000);
 

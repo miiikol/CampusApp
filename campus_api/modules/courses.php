@@ -18,8 +18,8 @@ function buildCourseOutputRow($id, $name, $room, $teacher, $dayOfWeek, $startSec
 }
 
 function buildMergedCoursesForUser($userId) {
-  ensureCourseAssignmentsTable();
-  ensureUserCourseCustomizationsTable();
+
+
 
   $stmt = db()->prepare("
     SELECT c.id, c.name, c.room, c.teacher, c.day_of_week, c.start_section, c.end_section, c.week_range
@@ -165,8 +165,8 @@ function buildMergedCoursesForUser($userId) {
 }
 
 if ($method === 'GET' && $path === '/courses') {
-  ensureCourseAssignmentsTable();
-  ensureUserCourseCustomizationsTable();
+
+
 
   $userId = trim((string)($_GET['userId'] ?? ''));
   $studentId = trim((string)($_GET['studentId'] ?? ''));
@@ -200,8 +200,8 @@ if ($method === 'GET' && $path === '/courses') {
 }
 
 if ($method === 'POST' && $path === '/courses/customize') {
-  ensureCourseAssignmentsTable();
-  ensureUserCourseCustomizationsTable();
+
+
 
   $body = jsonBody();
   $userId = trim((string)($body['userId'] ?? ''));

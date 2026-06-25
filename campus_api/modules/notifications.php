@@ -1,7 +1,7 @@
 <?php
 
 if ($method === 'GET' && $path === '/notifications') {
-  ensureNotificationsTable();
+
   $userId = trim((string)($_GET['userId'] ?? ''));
 
   // Token 鉴权
@@ -23,9 +23,9 @@ if ($method === 'GET' && $path === '/notifications') {
     WHERE user_id = ? AND id > ?
       AND NOT (type = 'COMMENT_LIKE' AND content LIKE '点赞来自用户：%')
     ORDER BY id ASC
-    LIMIT {$limit}
+    LIMIT ?
   ");
-  $stmt->execute([$userId, $sinceId]);
+  $stmt->execute([$userId, $sinceId, $limit]);
   $rows = $stmt->fetchAll();
   $out = array_map(function($r) {
     return [
@@ -44,7 +44,7 @@ if ($method === 'GET' && $path === '/notifications') {
 }
 
 if ($method === 'POST' && $path === '/notifications/read-all') {
-  ensureNotificationsTable();
+
   $body = jsonBody();
   $userId = trim((string)($body['userId'] ?? ''));
 

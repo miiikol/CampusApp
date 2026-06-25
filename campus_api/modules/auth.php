@@ -71,8 +71,11 @@ if ($method === 'POST' && $path === '/auth/reset-password') {
     respond(400, ['message' => 'studentId/fullName/idCardNo/newPassword 不能为空']);
   }
 
-  if (strlen($newPassword) < 6) {
-    respond(400, ['message' => '密码长度至少 6 位']);
+  if (strlen($newPassword) < 8) {
+    respond(400, ['message' => '密码长度至少 8 位']);
+  }
+  if (!preg_match('/[A-Za-z]/', $newPassword) || !preg_match('/\d/', $newPassword)) {
+    respond(400, ['message' => '密码必须同时包含字母和数字']);
   }
 
   if (!preg_match('/^\d{17}[\dX]$/', $idCardNo)) {

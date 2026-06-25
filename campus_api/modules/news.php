@@ -1,7 +1,7 @@
 <?php
 
 if ($method === 'GET' && $path === '/news') {
-  ensureFavoritesTables();
+
   $pg = parsePagination();
   $viewerId = trim((string)($_GET['userId'] ?? ''));
 
@@ -94,7 +94,7 @@ if ($method === 'POST' && $path === '/news') {
 }
 
 if ($method === 'POST' && preg_match('#^/news/([^/]+)/favorites/toggle$#', $path, $matches)) {
-  ensureFavoritesTables();
+
   $newsId = trim((string)$matches[1]);
   $body = jsonBody();
   $userId = trim((string)($body['userId'] ?? ''));
@@ -133,8 +133,8 @@ if ($method === 'POST' && preg_match('#^/news/([^/]+)/favorites/toggle$#', $path
 }
 
 if ($method === 'GET' && preg_match('#^/news/([^/]+)/comments$#', $path, $matches)) {
-  ensureNewsCommentsTable();
-  ensureNewsLikesTables();
+
+
   $newsId = (string)$matches[1];
   $viewerId = trim((string)($_GET['userId'] ?? ''));
   if ($viewerId === '') {
@@ -213,8 +213,8 @@ if ($method === 'POST' && preg_match('#^/news/([^/]+)/comments$#', $path, $match
     respond(429, ['message' => '评论过于频繁，请稍后再试']);
   }
 
-  ensureNewsCommentsTable();
-  ensureNewsLikesTables();
+
+
   $newsId = (string)$matches[1];
   $body = jsonBody();
   $userId = trim((string)($body['userId'] ?? ''));
@@ -318,7 +318,7 @@ if ($method === 'POST' && preg_match('#^/news/([^/]+)/comments$#', $path, $match
 }
 
 if ($method === 'GET' && preg_match('#^/news/([^/]+)/likes$#', $path, $matches)) {
-  ensureNewsLikesTables();
+
   $newsId = (string)$matches[1];
   $viewerId = trim((string)($_GET['userId'] ?? ''));
   $stmt1 = db()->prepare("SELECT COUNT(*) AS cnt FROM news_likes WHERE news_id = ?");
@@ -335,7 +335,7 @@ if ($method === 'GET' && preg_match('#^/news/([^/]+)/likes$#', $path, $matches))
 }
 
 if ($method === 'POST' && preg_match('#^/news/([^/]+)/likes/toggle$#', $path, $matches)) {
-  ensureNewsLikesTables();
+
   $newsId = (string)$matches[1];
   $body = jsonBody();
   $userId = trim((string)($body['userId'] ?? ''));
@@ -378,8 +378,8 @@ if ($method === 'POST' && preg_match('#^/news/([^/]+)/likes/toggle$#', $path, $m
 }
 
 if ($method === 'POST' && preg_match('#^/news/comments/([^/]+)/likes/toggle$#', $path, $matches)) {
-  ensureNewsCommentsTable();
-  ensureNewsLikesTables();
+
+
   $commentId = trim((string)$matches[1]);
   $body = jsonBody();
   $userId = trim((string)($body['userId'] ?? ''));

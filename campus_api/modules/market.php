@@ -1,7 +1,7 @@
 <?php
 
 if ($method === 'GET' && $path === '/market') {
-  ensureFavoritesTables();
+
   $pg = parsePagination();
   $viewerId = trim((string)($_GET['userId'] ?? ''));
   if ($viewerId === '') {
@@ -47,7 +47,7 @@ if ($method === 'GET' && $path === '/market') {
 }
 
 if ($method === 'POST' && preg_match('#^/market/([^/]+)/favorites/toggle$#', $path, $matches)) {
-  ensureFavoritesTables();
+
   $itemId = trim((string)$matches[1]);
   $body = jsonBody();
   $userId = trim((string)($body['userId'] ?? ''));
