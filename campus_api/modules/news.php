@@ -5,6 +5,11 @@ if ($method === 'GET' && $path === '/news') {
   $pg = parsePagination();
   $viewerId = trim((string)($_GET['userId'] ?? ''));
 
+  // APCu 缓存：列表缓存 30 秒，大幅降低数据库压力
+  $cacheKey = cacheKey('/news', ['page' => $pg['page'], 'pageSize' => $pg['pageSize'], 'viewerId' => $viewerId]);
+  $cached = cacheGet($cacheKey);
+  if ($cached !== null) respond(200, $cached);
+
   if ($viewerId === '') {
     $stmt = db()->prepare('SELECT id, title, summary, content, image_url, publish_date, type, 0 AS is_favorite FROM news ORDER BY publish_date DESC LIMIT ? OFFSET ?');
     $stmt->execute([$pg['limit'], $pg['offset']]);
@@ -37,25 +42,22 @@ if ($method === 'GET' && $path === '/news') {
       'isFavorite' => ((int)($r['is_favorite'] ?? 0)) === 1,
     ];
   }, $rows);
-  respond(200, [
+  $response = [
     'data' => $out,
     'page' => $pg['page'],
     'pageSize' => $pg['pageSize'],
     'total' => $total,
-  ]);
+  ];
+  cacheSet($cacheKey, $response, 30);
+  respond(200, $response);
 }
 
 if ($method === 'POST' && $path === '/news') {
   $body = jsonBody();
-  $adminId = trim((string)($body['adminId'] ?? ''));
 
-  // Token 鉴权（兼容旧 client）
-  $auth = authenticateOptional();
-  if ($auth !== null) {
-    if ($auth['role'] !== 'admin' || $auth['userId'] !== $adminId) {
-      respond(403, ['message' => '仅管理员可发布资讯']);
-    }
-  } else if (!isAdminUserId($adminId)) {
+  // 强制 Token 鉴权：仅管理员可发布
+  $auth = authenticate();
+  if ($auth['role'] !== 'admin') {
     respond(403, ['message' => '仅管理员可发布资讯']);
   }
 
@@ -81,6 +83,9 @@ if ($method === 'POST' && $path === '/news') {
   $stmt = db()->prepare("INSERT INTO news (id, title, summary, content, image_url, publish_date, type) VALUES (?, ?, ?, ?, ?, ?, ?)");
   $stmt->execute([$id, $title, $summary, $content, $imageUrl, $publishDate, $type]);
 
+  // 写入后清除列表缓存
+  cacheDeleteByPrefix('/news:');
+
   respond(200, [
     'id' => $id,
     'title' => $title,
@@ -99,9 +104,9 @@ if ($method === 'POST' && preg_match('#^/news/([^/]+)/favorites/toggle$#', $path
   $body = jsonBody();
   $userId = trim((string)($body['userId'] ?? ''));
 
-  // Token 鉴权
-  $auth = authenticateOptional();
-  if ($auth !== null && $auth['userId'] !== $userId) {
+  // 强制 Token 鉴权
+  $auth = authenticate();
+  if ($auth['userId'] !== $userId) {
     respond(403, ['message' => '无权操作']);
   }
   if ($newsId === '' || $userId === '') {
@@ -134,9 +139,9 @@ if ($method === 'POST' && preg_match('#^/news/([^/]+)/favorites/toggle$#', $path
 
 if ($method === 'GET' && preg_match('#^/news/([^/]+)/comments$#', $path, $matches)) {
 
-
   $newsId = (string)$matches[1];
   $viewerId = trim((string)($_GET['userId'] ?? ''));
+  $pg = parsePagination(200, 500);
   if ($viewerId === '') {
     $stmt = db()->prepare("
       SELECT
@@ -158,9 +163,9 @@ if ($method === 'GET' && preg_match('#^/news/([^/]+)/comments$#', $path, $matche
       ) l ON l.comment_id = c.id
       WHERE c.news_id = ? AND c.status <> 'BANNED'
       ORDER BY c.publish_time ASC
-      LIMIT 500
+      LIMIT ? OFFSET ?
     ");
-    $stmt->execute([$newsId]);
+    $stmt->execute([$newsId, $pg['limit'], $pg['offset']]);
   } else {
     $stmt = db()->prepare("
       SELECT
@@ -183,9 +188,9 @@ if ($method === 'GET' && preg_match('#^/news/([^/]+)/comments$#', $path, $matche
       LEFT JOIN news_comment_likes me ON me.comment_id = c.id AND me.user_id = ?
       WHERE c.news_id = ? AND c.status <> 'BANNED'
       ORDER BY c.publish_time ASC
-      LIMIT 500
+      LIMIT ? OFFSET ?
     ");
-    $stmt->execute([$viewerId, $newsId]);
+    $stmt->execute([$viewerId, $newsId, $pg['limit'], $pg['offset']]);
   }
   $rows = $stmt->fetchAll();
   $out = array_map(function($r) {
@@ -205,7 +210,17 @@ if ($method === 'GET' && preg_match('#^/news/([^/]+)/comments$#', $path, $matche
       'likedByMe' => ((int)($r['liked_by_me'] ?? 0)) === 1,
     ];
   }, $rows);
-  respond(200, $out);
+
+  $totalStmt = db()->prepare("SELECT COUNT(*) AS cnt FROM news_comments WHERE news_id = ? AND status <> 'BANNED'");
+  $totalStmt->execute([$newsId]);
+  $total = (int)($totalStmt->fetch()['cnt'] ?? 0);
+
+  respond(200, [
+    'data' => $out,
+    'page' => $pg['page'],
+    'pageSize' => $pg['pageSize'],
+    'total' => $total,
+  ]);
 }
 
 if ($method === 'POST' && preg_match('#^/news/([^/]+)/comments$#', $path, $matches)) {
@@ -213,15 +228,13 @@ if ($method === 'POST' && preg_match('#^/news/([^/]+)/comments$#', $path, $match
     respond(429, ['message' => '评论过于频繁，请稍后再试']);
   }
 
-
-
   $newsId = (string)$matches[1];
   $body = jsonBody();
   $userId = trim((string)($body['userId'] ?? ''));
 
-  // Token 鉴权
-  $auth = authenticateOptional();
-  if ($auth !== null && $auth['userId'] !== $userId) {
+  // 强制 Token 鉴权
+  $auth = authenticate();
+  if ($auth['userId'] !== $userId) {
     respond(403, ['message' => '无权操作']);
   }
   $username = trim((string)($body['username'] ?? ''));
@@ -286,7 +299,7 @@ if ($method === 'POST' && preg_match('#^/news/([^/]+)/comments$#', $path, $match
     $targetUserId = $replyToUserIdValue;
     if ($targetUserId !== null && $targetUserId !== '' && $targetUserId !== $userId) {
       $title = '有人回复了你';
-      $text = $username . ' 回复：' . (mb_strlen($content) > 60 ? mb_substr($content, 0, 60) . '…' : $content);
+      $text = $username . ' 回复：' . (mb_strlen($content) > 60 ? mb_substr($content, 0, 60) . '...' : $content);
       notifyUser($targetUserId, 'COMMENT_REPLY', $title, $text, 'NEWS', $newsId);
     }
   }
@@ -340,9 +353,9 @@ if ($method === 'POST' && preg_match('#^/news/([^/]+)/likes/toggle$#', $path, $m
   $body = jsonBody();
   $userId = trim((string)($body['userId'] ?? ''));
 
-  // Token 鉴权
-  $auth = authenticateOptional();
-  if ($auth !== null && $auth['userId'] !== $userId) {
+  // 强制 Token 鉴权
+  $auth = authenticate();
+  if ($auth['userId'] !== $userId) {
     respond(403, ['message' => '无权操作']);
   }
   if ($newsId === '' || $userId === '') {
@@ -379,14 +392,13 @@ if ($method === 'POST' && preg_match('#^/news/([^/]+)/likes/toggle$#', $path, $m
 
 if ($method === 'POST' && preg_match('#^/news/comments/([^/]+)/likes/toggle$#', $path, $matches)) {
 
-
   $commentId = trim((string)$matches[1]);
   $body = jsonBody();
   $userId = trim((string)($body['userId'] ?? ''));
 
-  // Token 鉴权
-  $auth = authenticateOptional();
-  if ($auth !== null && $auth['userId'] !== $userId) {
+  // 强制 Token 鉴权
+  $auth = authenticate();
+  if ($auth['userId'] !== $userId) {
     respond(403, ['message' => '无权操作']);
   }
   if ($commentId === '' || $userId === '') {
@@ -432,7 +444,7 @@ if ($method === 'POST' && preg_match('#^/news/comments/([^/]+)/likes/toggle$#', 
         $likerName = getUsernameById($userId);
         if ($likerName === '') $likerName = '未知用户';
         $commentText = trim((string)($comment['content'] ?? ''));
-        $snippet = $commentText !== '' ? (mb_strlen($commentText) > 30 ? mb_substr($commentText, 0, 30) . '…' : $commentText) : '';
+        $snippet = $commentText !== '' ? (mb_strlen($commentText) > 30 ? mb_substr($commentText, 0, 30) . '...' : $commentText) : '';
         $title = '评论获赞';
         $content = $snippet !== '' ? ($likerName . ' 点赞了你的评论：' . $snippet) : ($likerName . ' 点赞了你的评论');
         notifyUser($targetUserId, 'COMMENT_LIKE', $title, $content, 'NEWS_COMMENT', (string)$commentId);

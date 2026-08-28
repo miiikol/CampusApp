@@ -47,7 +47,7 @@ class LostFoundRepository @Inject constructor(
 
     suspend fun refreshItems(): Resource<Unit> {
         return try {
-            val remoteItems = api.getLostFoundItems()
+            val remoteItems = api.getLostFoundItems().data
             dao.clearItems()
             dao.insertItems(remoteItems.map { it.toEntity() })
             Resource.Success(Unit)
@@ -55,6 +55,8 @@ class LostFoundRepository @Inject constructor(
             Resource.Error(toHttpErrorMessage(e))
         } catch (e: IOException) {
             Resource.Error("无法连接服务器，请确认 WampServer 已启动，且模拟器可访问 10.0.2.2")
+        } catch (e: Exception) {
+            Resource.Error(e.localizedMessage?.takeIf { it.isNotBlank() } ?: "加载失物招领失败")
         }
     }
 

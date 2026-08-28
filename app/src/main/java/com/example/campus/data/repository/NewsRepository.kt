@@ -74,7 +74,7 @@ class NewsRepository @Inject constructor(
     suspend fun refreshNews(): Resource<Unit> {
         return try {
             val currentUserId = userDao.getCurrentUser()?.id?.takeIf { it.isNotBlank() }
-            val remoteNews = api.getNews(currentUserId)
+            val remoteNews = api.getNews(currentUserId).data
             dao.clearNews()
             dao.insertNews(remoteNews.map { it.toEntity() })
             Resource.Success(Unit)
@@ -156,7 +156,7 @@ class NewsRepository @Inject constructor(
 
     suspend fun getComments(newsId: String, viewerUserId: String?): Resource<List<CommentDto>> {
         return try {
-            Resource.Success(api.getNewsComments(newsId = newsId, userId = viewerUserId))
+            Resource.Success(api.getNewsComments(newsId = newsId, userId = viewerUserId).data)
         } catch (e: HttpException) {
             Resource.Error(toHttpErrorMessage(e))
         } catch (e: IOException) {

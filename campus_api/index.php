@@ -71,8 +71,13 @@ require_once __DIR__ . '/includes/jwt.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/rate_limit.php';
 require_once __DIR__ . '/includes/storage.php';
+require_once __DIR__ . '/includes/cache.php';
 require_once __DIR__ . '/includes/db_schema.php';
-require_once __DIR__ . '/includes/seed_data.php';
+
+// 生产环境不自动加载种子数据；仅开发/演示时通过环境变量 SESSION_SEED=1 启用
+if (env('SESSION_SEED', '1') === '1' || env('APP_DEBUG', 'false') === 'true') {
+  require_once __DIR__ . '/includes/seed_data.php';
+}
 
 if ($method === 'GET' && $path === '/') {
   respond(200, ['ok' => true, 'service' => 'campus_api']);

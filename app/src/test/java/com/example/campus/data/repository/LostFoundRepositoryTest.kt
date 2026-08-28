@@ -5,6 +5,7 @@ import com.example.campus.core.common.Resource
 import com.example.campus.data.local.entity.LostFoundEntity
 import com.example.campus.data.remote.ApiService
 import com.example.campus.data.remote.dto.LostFoundDto
+import com.example.campus.data.remote.dto.PagedResponse
 import com.example.campus.testing.FakeLostFoundDao
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -29,17 +30,22 @@ class LostFoundRepositoryTest {
         val dao = FakeLostFoundDao(cached)
         val api = mockk<ApiService>(relaxed = true)
         val context = mockk<Context>(relaxed = true)
-        coEvery { api.getLostFoundItems() } returns listOf(
-            LostFoundDto(
-                id = "lf1", title = "T1", description = "D1", location = "L1",
-                type = "LOST", imageUrl = null, contactInfo = null,
-                publishTime = 10L, latitude = null, longitude = null
+        coEvery { api.getLostFoundItems() } returns PagedResponse(
+            data = listOf(
+                LostFoundDto(
+                    id = "lf1", title = "T1", description = "D1", location = "L1",
+                    type = "LOST", imageUrl = null, contactInfo = null,
+                    publishTime = 10L, latitude = null, longitude = null
+                ),
+                LostFoundDto(
+                    id = "lf2", title = "T2", description = "D2", location = "L2",
+                    type = "FOUND", imageUrl = null, contactInfo = null,
+                    publishTime = 20L, latitude = null, longitude = null
+                )
             ),
-            LostFoundDto(
-                id = "lf2", title = "T2", description = "D2", location = "L2",
-                type = "FOUND", imageUrl = null, contactInfo = null,
-                publishTime = 20L, latitude = null, longitude = null
-            )
+            page = 1,
+            pageSize = 20,
+            total = 2
         )
         val repo = LostFoundRepository(api = api, dao = dao, context = context)
 

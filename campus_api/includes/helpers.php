@@ -5,7 +5,11 @@ function now_ms() {
 }
 
 /**
- * 记录错误日志
+ * 记录错误日志（含自动轮转 + 7 天保留）
+ *
+ * 策略：
+ *  - 按日期分文件，单文件超过 5MB 自动归档
+ *  - 超过 7 天的错误日志自动删除
  */
 function logError(string $message, ?Exception $e = null, array $context = []): void {
   $logDir = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'logs';
@@ -24,11 +28,45 @@ function logError(string $message, ?Exception $e = null, array $context = []): v
   }
   $line .= PHP_EOL;
 
-  $logFile = $logDir . DIRECTORY_SEPARATOR . 'error-' . date('Y-m-d') . '.log';
+  $date = date('Y-m-d');
+  $logFile = $logDir . DIRECTORY_SEPARATOR . 'error-' . $date . '.log';
+
+  // 轮转：文件超过 5MB
+  if (file_exists($logFile) && filesize($logFile) > 5 * 1024 * 1024) {
+    $suffix = 1;
+    do {
+      $rotatedFile = $logDir . DIRECTORY_SEPARATOR . "error-{$date}-{$suffix}.log";
+      $suffix++;
+    } while (file_exists($rotatedFile) && $suffix < 100);
+    @rename($logFile, $rotatedFile);
+  }
+
   @file_put_contents($logFile, $line, FILE_APPEND | LOCK_EX);
+
+  // 清理 7 天前日志（每次请求最多删除 10 个旧文件，避免耗时过长）
+  cleanupOldLogs($logDir);
 
   // 同时输出到 PHP error_log
   error_log($line);
+}
+
+function cleanupOldLogs(string $logDir): void {
+  $cutoff = time() - 7 * 86400;
+  $count = 0;
+  $items = @scandir($logDir);
+  if ($items === false) return;
+
+  foreach ($items as $item) {
+    if ($count >= 10) break;
+    $path = $logDir . DIRECTORY_SEPARATOR . $item;
+    if (is_file($path) && pathinfo($item, PATHINFO_EXTENSION) === 'log') {
+      $mtime = @filemtime($path);
+      if ($mtime !== false && $mtime < $cutoff) {
+        @unlink($path);
+        $count++;
+      }
+    }
+  }
 }
 
 function jsonBody() {
@@ -123,4 +161,11 @@ function parsePagination(int $defaultSize = 20, int $maxSize = 200): array {
     'page'     => $page,
     'pageSize' => $pageSize,
   ];
+}
+
+/**
+ * 哈希身份证号（仅用于匹配校验，不可反推出原文）
+ */
+function idCardHash(string $idCardNo): string {
+  return hash_hmac('sha256', strtoupper($idCardNo), env('JWT_SECRET', ''));
 }

@@ -22,6 +22,16 @@ data class CommentDto(
 )
 
 /**
+ * 评论列表分页响应
+ */
+data class CommentListResponse(
+    val data: List<CommentDto>,
+    val page: Int,
+    val pageSize: Int,
+    val total: Int
+)
+
+/**
  * 创建评论请求体。
  */
 data class CreateCommentRequest(

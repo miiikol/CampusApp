@@ -130,7 +130,7 @@ function setMetaValue($key, $value) {
 
 function ensureUsersProfileColumns() {
   try { db()->exec("ALTER TABLE users ADD COLUMN full_name VARCHAR(100) NULL"); } catch (Exception $e) { logError('migration: users.full_name', $e); }
-  try { db()->exec("ALTER TABLE users ADD COLUMN id_card_no VARCHAR(18) NULL"); } catch (Exception $e) { logError('migration: users.id_card_no', $e); }
+  try { db()->exec("ALTER TABLE users ADD COLUMN id_card_hash VARCHAR(64) NULL"); } catch (Exception $e) { logError('migration: users.id_card_hash', $e); }
 }
 
 function ensureCourseAssignmentsTable() {

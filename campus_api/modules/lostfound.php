@@ -2,6 +2,12 @@
 
 if ($method === 'GET' && $path === '/lostfound') {
   $pg = parsePagination();
+
+  // APCu 缓存：列表缓存 30 秒，降低数据库压力
+  $cacheKey = cacheKey('/lostfound', ['page' => $pg['page'], 'pageSize' => $pg['pageSize']]);
+  $cached = cacheGet($cacheKey);
+  if ($cached !== null) respond(200, $cached);
+
   $stmt = db()->prepare("SELECT id, title, description, location, type, image_url, contact_info, publish_time, latitude, longitude FROM lost_found_items WHERE status = 'APPROVED' ORDER BY publish_time DESC LIMIT ? OFFSET ?");
   $stmt->execute([$pg['limit'], $pg['offset']]);
   $rows = $stmt->fetchAll();
@@ -22,12 +28,14 @@ if ($method === 'GET' && $path === '/lostfound') {
       'longitude' => $r['longitude'] !== null ? (float)$r['longitude'] : null,
     ];
   }, $rows);
-  respond(200, [
+  $response = [
     'data' => $out,
     'page' => $pg['page'],
     'pageSize' => $pg['pageSize'],
     'total' => $total,
-  ]);
+  ];
+  cacheSet($cacheKey, $response, 30);
+  respond(200, $response);
 }
 
 if ($method === 'POST' && $path === '/lostfound') {
@@ -45,9 +53,9 @@ if ($method === 'POST' && $path === '/lostfound') {
   $latitude = $body['latitude'] ?? null;
   $longitude = $body['longitude'] ?? null;
 
-  // Token 鉴权
-  $auth = authenticateOptional();
-  if ($auth !== null && $auth['userId'] !== $ownerId) {
+  // 强制 Token 鉴权：发布者必须与 Token 主体一致
+  $auth = authenticate();
+  if ($auth['userId'] !== $ownerId) {
     respond(403, ['message' => '无权代他人发布']);
   }
 
@@ -68,6 +76,9 @@ if ($method === 'POST' && $path === '/lostfound') {
     is_numeric($longitude) ? (float)$longitude : null,
     $status,
   ]);
+
+  // 写入后清除列表缓存
+  cacheDeleteByPrefix('/lostfound:');
 
   respond(200, [
     'id' => $id,

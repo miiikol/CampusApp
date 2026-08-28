@@ -1,30 +1,17 @@
 <?php
 
 /**
- * 文件存储抽象层
+ * 文件存储（本地磁盘）
  *
- * 通过 .env 中的 STORAGE_DRIVER 切换存储后端：
- *   local  — 本地磁盘存储（适合开发）
- *   s3     — AWS S3 兼容存储（阿里云OSS、腾讯云COS等）
- *
- * 上传接口：uploadFile($tmpPath, $originalName) → URL
+ * 上传流程：
+ *   1. validateUploadedFile() — 校验大小/类型/魔数
+ *   2. uploadFile($tmpPath, $originalName) — 保存并返回访问URL
  */
-
-function storageDriver(): string {
-  return strtolower(env('STORAGE_DRIVER', 'local'));
-}
 
 /**
- * 上传文件到存储，返回访问 URL
+ * 上传文件到本地存储，返回访问 URL
  */
 function uploadFile(string $tmpPath, string $originalName): string {
-  $driver = storageDriver();
-
-  if ($driver === 's3') {
-    return uploadToS3($tmpPath, $originalName);
-  }
-
-  // 默认 local
   return uploadToLocal($tmpPath, $originalName);
 }
 
@@ -48,42 +35,10 @@ function uploadToLocal(string $tmpPath, string $originalName): string {
     respond(500, ['message' => '文件保存失败']);
   }
 
+  // 上传后设置权限，防止直接执行
+  @chmod($targetPath, 0644);
+
   return buildPublicUrl('/uploads/' . $filename);
-}
-
-/**
- * S3 / OSS 兼容存储
- *
- * 部署到云服务器后替换此处的 SDK 调用：
- *   阿里云 OSS: composer require aliyuncs/oss-sdk-php
- *   腾讯云 COS: composer require qcloud/cos-sdk-v5
- *   AWS S3:     composer require aws/aws-sdk-php
- */
-function uploadToS3(string $tmpPath, string $originalName): string {
-  $bucket = env('S3_BUCKET', '');
-  $region = env('S3_REGION', '');
-  $endpoint = env('S3_ENDPOINT', ''); // OSS/COS 自定义 endpoint
-
-  if ($bucket === '' || $region === '') {
-    respond(500, ['message' => 'S3 存储未正确配置']);
-  }
-
-  $ext = normalizeExt($originalName);
-  $key = 'uploads/' . date('Y/m/') . bin2hex(random_bytes(16)) . '.' . $ext;
-
-  // 占位：替换为实际 SDK 调用
-  //
-  // 示例（AWS S3 SDK）：
-  // $s3 = new Aws\S3\S3Client(['region' => $region, 'version' => 'latest']);
-  // $s3->putObject(['Bucket' => $bucket, 'Key' => $key, 'SourceFile' => $tmpPath]);
-  //
-  // 示例（阿里云 OSS SDK）：
-  // $client = new OSS\OssClient(env('S3_ACCESS_KEY'), env('S3_SECRET_KEY'), $endpoint);
-  // $client->uploadFile($bucket, $key, $tmpPath);
-
-  // 生产部署时取消下面的注释并安装对应 SDK
-  respond(500, ['message' => 'S3 存储驱动需要安装 SDK 后启用']);
-  return ''; // unreachable
 }
 
 /**
@@ -112,7 +67,52 @@ function normalizeExt(string $filename): string {
 }
 
 /**
- * 验证上传文件
+ * 白名单允许的扩展名
+ */
+function allowedExtensions(): array {
+  return ['jpg', 'jpeg', 'png', 'webp'];
+}
+
+/**
+ * 魔数校验 — 通过文件头字节确保文件类型真实可靠
+ */
+function validateFileMagic(string $tmpPath, string $ext): void {
+  $handle = @fopen($tmpPath, 'rb');
+  if ($handle === false) {
+    respond(400, ['message' => '无法读取文件']);
+  }
+
+  $magic = fread($handle, 12);
+  fclose($handle);
+
+  $bytes = strtoupper(bin2hex(substr($magic, 0, 4)));
+
+  $validMagic = false;
+  switch ($ext) {
+    case 'jpg':
+    case 'jpeg':
+      // JPEG: FF D8 FF (E0/E1/E2/DB)
+      $validMagic = (substr($bytes, 0, 4) === 'FFD8');
+      break;
+    case 'png':
+      // PNG: 89 50 4E 47
+      $validMagic = ($bytes === '89504E47');
+      break;
+    case 'webp':
+      // WebP: 52 49 46 46 ... 57 45 42 50
+      $rif = strtoupper(bin2hex(substr($magic, 0, 4)));
+      $webp = strtoupper(bin2hex(substr($magic, 8, 4)));
+      $validMagic = ($rif === '52494646' && $webp === '57454250');
+      break;
+  }
+
+  if (!$validMagic) {
+    respond(400, ['message' => '不允许的文件类型（文件头校验失败）']);
+  }
+}
+
+/**
+ * 验证上传文件（含大小、类型、魔数校验）
  * @return string tmp_path
  */
 function validateUploadedFile(): string {
@@ -140,10 +140,13 @@ function validateUploadedFile(): string {
 
   $originalName = (string)($file['name'] ?? '');
   $ext = normalizeExt($originalName);
-  $allowed = ['jpg', 'png', 'webp'];
+  $allowed = allowedExtensions();
   if (!in_array($ext, $allowed, true)) {
     respond(400, ['message' => '仅支持 JPG/PNG/WEBP']);
   }
+
+  // 魔数校验：防止扩展名伪装的恶意文件
+  validateFileMagic($tmpName, $ext);
 
   return $tmpName;
 }

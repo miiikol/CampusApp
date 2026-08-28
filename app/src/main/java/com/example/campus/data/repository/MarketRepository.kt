@@ -64,7 +64,7 @@ class MarketRepository @Inject constructor(
         return try {
             val currentUser = userDao.getCurrentUser()
             val currentUserId = currentUser?.id?.takeIf { it.isNotBlank() }
-            val remoteItems = api.getMarketItems(currentUserId)
+            val remoteItems = api.getMarketItems(currentUserId).data
             val remoteEntities = remoteItems.map { it.toEntity(isFavorite = false) }
             dao.insertItems(remoteEntities)
             if (!currentUserId.isNullOrBlank()) {
@@ -87,6 +87,8 @@ class MarketRepository @Inject constructor(
             Resource.Error(toHttpErrorMessage(e))
         } catch (e: IOException) {
             Resource.Error("无法连接服务器，请确认 WampServer 已启动，且模拟器可访问 10.0.2.2")
+        } catch (e: Exception) {
+            Resource.Error(e.localizedMessage?.takeIf { it.isNotBlank() } ?: "加载商品失败")
         }
     }
 

@@ -8,6 +8,7 @@ import com.example.campus.data.local.entity.MarketEntity
 import com.example.campus.data.local.entity.UserEntity
 import com.example.campus.data.remote.ApiService
 import com.example.campus.data.remote.dto.MarketDto
+import com.example.campus.data.remote.dto.PagedResponse
 import com.example.campus.testing.FakeMarketDao
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -36,11 +37,16 @@ class MarketRepositoryTest {
         val favoriteDao = mockk<MarketFavoriteDao>(relaxed = true)
         val context = mockk<Context>(relaxed = true)
         coEvery { userDao.getCurrentUser() } returns null
-        coEvery { api.getMarketItems(null) } returns listOf(
-            MarketDto(id = "m1", title = "T1", description = "D1", price = 20.0,
-                sellerId = "s1", imageUrl = null, publishTime = 10L),
-            MarketDto(id = "m2", title = "T2", description = "D2", price = 30.0,
-                sellerId = "s2", imageUrl = null, publishTime = 20L)
+        coEvery { api.getMarketItems(null) } returns PagedResponse(
+            data = listOf(
+                MarketDto(id = "m1", title = "T1", description = "D1", price = 20.0,
+                    sellerId = "s1", imageUrl = null, publishTime = 10L),
+                MarketDto(id = "m2", title = "T2", description = "D2", price = 30.0,
+                    sellerId = "s2", imageUrl = null, publishTime = 20L)
+            ),
+            page = 1,
+            pageSize = 20,
+            total = 2
         )
         val repo = MarketRepository(api, dao, favoriteDao, userDao, context)
 
@@ -89,11 +95,16 @@ class MarketRepositoryTest {
             id = "user1", username = "admin", studentId = "admin01",
             avatarUrl = null, token = "tok", role = "student"
         )
-        coEvery { api.getMarketItems("user1") } returns listOf(
-            MarketDto(id = "m1", title = "T1", description = "D1", price = 20.0,
-                sellerId = "s1", imageUrl = null, publishTime = 10L, isFavorite = true),
-            MarketDto(id = "m2", title = "T2", description = "D2", price = 30.0,
-                sellerId = "s2", imageUrl = null, publishTime = 20L, isFavorite = false)
+        coEvery { api.getMarketItems("user1") } returns PagedResponse(
+            data = listOf(
+                MarketDto(id = "m1", title = "T1", description = "D1", price = 20.0,
+                    sellerId = "s1", imageUrl = null, publishTime = 10L, isFavorite = true),
+                MarketDto(id = "m2", title = "T2", description = "D2", price = 30.0,
+                    sellerId = "s2", imageUrl = null, publishTime = 20L, isFavorite = false)
+            ),
+            page = 1,
+            pageSize = 20,
+            total = 2
         )
         val repo = MarketRepository(api, dao, favoriteDao, userDao, context)
         val result = repo.refreshItems()

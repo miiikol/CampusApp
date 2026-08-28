@@ -7,7 +7,11 @@ import android.view.ViewGroup
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
+import kotlinx.coroutines.launch
 import com.example.campus.R
 import com.example.campus.core.common.UserRole
 import com.example.campus.core.common.Resource
@@ -86,43 +90,50 @@ class LoginFragment : Fragment() {
         // - Loading：禁用按钮并显示进度文案
         // - Success：恢复按钮、提示成功并返回上一页面
         // - Error：恢复按钮并展示错误消息
-        viewModel.loginState.observe(viewLifecycleOwner) { resource ->
-            when (resource) {
-                is Resource.Loading -> {
-                    binding.btnLogin.isEnabled = false
-                    binding.btnLogin.text = getString(R.string.logging_in)
-                    binding.tilStudentId.isEnabled = false
-                    binding.tilPassword.isEnabled = false
-                }
-                is Resource.Success -> {
-                    binding.btnLogin.isEnabled = true
-                    binding.btnLogin.text = getString(R.string.login_button)
-                    binding.tilStudentId.isEnabled = true
-                    binding.tilPassword.isEnabled = true
-                    showSnack(getString(R.string.login_success), type = SnackType.SUCCESS)
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.loginState.collect { resource ->
+                    when (resource) {
+                        null -> Unit
+                        is Resource.Loading -> {
+                            binding.btnLogin.isEnabled = false
+                            binding.btnLogin.text = getString(R.string.logging_in)
+                            binding.tilStudentId.isEnabled = false
+                            binding.tilPassword.isEnabled = false
+                        }
+                        is Resource.Success -> {
+                            binding.btnLogin.isEnabled = true
+                            binding.btnLogin.text = getString(R.string.login_button)
+                            binding.tilStudentId.isEnabled = true
+                            binding.tilPassword.isEnabled = true
+                            showSnack(getString(R.string.login_success), type = SnackType.SUCCESS)
 
-                    val targetDestination = if (resource.data?.role == UserRole.ADMIN) {
-                        R.id.nav_admin
-                    } else {
-                        R.id.nav_course
+                            val targetDestination = if (resource.data?.role == UserRole.ADMIN) {
+                                R.id.nav_admin
+                            } else {
+                                R.id.nav_course
+                            }
+
+                            // 登录成功后按角色跳转主页，并移除登录页的返回栈
+                            findNavController().navigate(
+                                targetDestination,
+                                null,
+                                androidx.navigation.NavOptions.Builder()
+                                    .setPopUpTo(R.id.loginFragment, true)
+                                    .build()
+                            )
+                            // 导航后重置状态，避免热流 Success 值重复触发导航
+                            viewModel.resetState()
+                        }
+                        is Resource.Error -> {
+                            binding.btnLogin.isEnabled = true
+                            binding.btnLogin.text = getString(R.string.login_button)
+                            binding.tilStudentId.isEnabled = true
+                            binding.tilPassword.isEnabled = true
+                            binding.tilPassword.error = resource.message
+                            showSnack(resource.message ?: "登录失败", type = SnackType.ERROR)
+                        }
                     }
-
-                    // 登录成功后按角色跳转主页，并移除登录页的返回栈
-                    findNavController().navigate(
-                        targetDestination,
-                        null,
-                        androidx.navigation.NavOptions.Builder()
-                            .setPopUpTo(R.id.loginFragment, true)
-                            .build()
-                    )
-                }
-                is Resource.Error -> {
-                    binding.btnLogin.isEnabled = true
-                    binding.btnLogin.text = getString(R.string.login_button)
-                    binding.tilStudentId.isEnabled = true
-                    binding.tilPassword.isEnabled = true
-                    binding.tilPassword.error = resource.message
-                    showSnack(resource.message ?: "登录失败", type = SnackType.ERROR)
                 }
             }
         }

@@ -30,13 +30,13 @@ $pdo->exec("
     role VARCHAR(16) NOT NULL DEFAULT 'student',
     avatar_url VARCHAR(500) NULL,
     full_name VARCHAR(100) NULL,
-    id_card_no VARCHAR(18) NULL,
+    id_card_hash VARCHAR(64) NULL,
     created_at BIGINT NOT NULL,
     INDEX idx_student_id (student_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ");
 safeAlter($pdo, "ALTER TABLE users ADD COLUMN full_name VARCHAR(100) NULL");
-safeAlter($pdo, "ALTER TABLE users ADD COLUMN id_card_no VARCHAR(18) NULL");
+safeAlter($pdo, "ALTER TABLE users ADD COLUMN id_card_hash VARCHAR(64) NULL");
 
 echo "[2/13] auth_tokens ...\n";
 $pdo->exec("

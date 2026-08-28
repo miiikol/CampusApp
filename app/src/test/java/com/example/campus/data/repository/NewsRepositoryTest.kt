@@ -6,6 +6,7 @@ import com.example.campus.data.local.dao.UserDao
 import com.example.campus.data.local.entity.NewsEntity
 import com.example.campus.data.remote.ApiService
 import com.example.campus.data.remote.dto.NewsDto
+import com.example.campus.data.remote.dto.PagedResponse
 import com.example.campus.testing.FakeNewsDao
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -38,25 +39,30 @@ class NewsRepositoryTest {
         val userDao = mockk<UserDao>(relaxed = true)
         val context = mockk<Context>(relaxed = true)
         coEvery { userDao.getCurrentUser() } returns null
-        coEvery { api.getNews(null) } returns listOf(
-            NewsDto(
-                id = "n1",
-                title = "T1",
-                summary = "S1",
-                content = "C1",
-                imageUrl = null,
-                publishDate = 10L,
-                type = "NEWS"
+        coEvery { api.getNews(null) } returns PagedResponse(
+            data = listOf(
+                NewsDto(
+                    id = "n1",
+                    title = "T1",
+                    summary = "S1",
+                    content = "C1",
+                    imageUrl = null,
+                    publishDate = 10L,
+                    type = "NEWS"
+                ),
+                NewsDto(
+                    id = "n2",
+                    title = "T2",
+                    summary = "S2",
+                    content = "C2",
+                    imageUrl = null,
+                    publishDate = 20L,
+                    type = "NOTICE"
+                )
             ),
-            NewsDto(
-                id = "n2",
-                title = "T2",
-                summary = "S2",
-                content = "C2",
-                imageUrl = null,
-                publishDate = 20L,
-                type = "NOTICE"
-            )
+            page = 1,
+            pageSize = 20,
+            total = 2
         )
 
         val repo = NewsRepository(api = api, dao = dao, userDao = userDao, context = context)

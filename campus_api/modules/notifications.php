@@ -1,12 +1,11 @@
 <?php
 
 if ($method === 'GET' && $path === '/notifications') {
-
   $userId = trim((string)($_GET['userId'] ?? ''));
 
-  // Token 鉴权
-  $auth = authenticateOptional();
-  if ($auth !== null && $auth['userId'] !== $userId) {
+  // 强制 Token 鉴权
+  $auth = authenticate();
+  if ($auth['userId'] !== $userId) {
     respond(403, ['message' => '无权查看他人的通知']);
   }
   $sinceId = isset($_GET['sinceId']) ? (int)$_GET['sinceId'] : 0;
@@ -44,13 +43,12 @@ if ($method === 'GET' && $path === '/notifications') {
 }
 
 if ($method === 'POST' && $path === '/notifications/read-all') {
-
   $body = jsonBody();
   $userId = trim((string)($body['userId'] ?? ''));
 
-  // Token 鉴权
-  $auth = authenticateOptional();
-  if ($auth !== null && $auth['userId'] !== $userId) {
+  // 强制 Token 鉴权
+  $auth = authenticate();
+  if ($auth['userId'] !== $userId) {
     respond(403, ['message' => '无权操作']);
   }
   if ($userId === '') {

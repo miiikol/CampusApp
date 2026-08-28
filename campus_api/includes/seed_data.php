@@ -1,6 +1,6 @@
 <?php
 
-function ensureDemoUser($studentId, $username, $fullName, $idCardNo, $avatarUrl, $password, $role = 'student') {
+function ensureDemoUser($studentId, $username, $fullName, $idCardHash, $avatarUrl, $password, $role = 'student') {
   ensureUsersProfileColumns();
 
   $stmt = db()->prepare('SELECT id, password_hash FROM users WHERE student_id = ? LIMIT 1');
@@ -10,17 +10,17 @@ function ensureDemoUser($studentId, $username, $fullName, $idCardNo, $avatarUrl,
   if ($row) {
     $passwordHash = trim((string)($row['password_hash'] ?? ''));
     if ($passwordHash === '') {
-      $stmt2 = db()->prepare('UPDATE users SET username = ?, full_name = ?, id_card_no = ?, avatar_url = ?, role = ?, password_hash = ? WHERE id = ?');
-      $stmt2->execute([$username, $fullName, $idCardNo, $avatarUrl, $role, password_hash($password, PASSWORD_DEFAULT), $row['id']]);
+      $stmt2 = db()->prepare('UPDATE users SET username = ?, full_name = ?, id_card_hash = ?, avatar_url = ?, role = ?, password_hash = ? WHERE id = ?');
+      $stmt2->execute([$username, $fullName, $idCardHash, $avatarUrl, $role, password_hash($password, PASSWORD_DEFAULT), $row['id']]);
     } else {
-      $stmt2 = db()->prepare('UPDATE users SET username = ?, full_name = ?, id_card_no = ?, avatar_url = ?, role = ? WHERE id = ?');
-      $stmt2->execute([$username, $fullName, $idCardNo, $avatarUrl, $role, $row['id']]);
+      $stmt2 = db()->prepare('UPDATE users SET username = ?, full_name = ?, id_card_hash = ?, avatar_url = ?, role = ? WHERE id = ?');
+      $stmt2->execute([$username, $fullName, $idCardHash, $avatarUrl, $role, $row['id']]);
     }
     return (string)$row['id'];
   }
 
-  $stmt3 = db()->prepare('INSERT INTO users (student_id, username, full_name, id_card_no, password_hash, role, avatar_url) VALUES (?, ?, ?, ?, ?, ?, ?)');
-  $stmt3->execute([$studentId, $username, $fullName, $idCardNo, password_hash($password, PASSWORD_DEFAULT), $role, $avatarUrl]);
+  $stmt3 = db()->prepare('INSERT INTO users (student_id, username, full_name, id_card_hash, password_hash, role, avatar_url) VALUES (?, ?, ?, ?, ?, ?, ?)');
+  $stmt3->execute([$studentId, $username, $fullName, $idCardHash, password_hash($password, PASSWORD_DEFAULT), $role, $avatarUrl]);
 
   $stmt4 = db()->prepare('SELECT id FROM users WHERE student_id = ? LIMIT 1');
   $stmt4->execute([$studentId]);
@@ -34,7 +34,7 @@ function ensureDemoUsersSeeded() {
       'studentId' => '20260001',
       'username' => '张明远',
       'fullName' => '张明远',
-      'idCardNo' => '110105200402150011',
+      'idCardHash' => idCardHash('110105200402150011'),
       'avatarUrl' => null,
       'password' => '123456',
       'role' => 'student',
@@ -43,7 +43,7 @@ function ensureDemoUsersSeeded() {
       'studentId' => '20260002',
       'username' => '李思涵',
       'fullName' => '李思涵',
-      'idCardNo' => '320311200403214526',
+      'idCardHash' => idCardHash('320311200403214526'),
       'avatarUrl' => null,
       'password' => '123456',
       'role' => 'student',
@@ -52,7 +52,7 @@ function ensureDemoUsersSeeded() {
       'studentId' => '20260003',
       'username' => '王泽宇',
       'fullName' => '王泽宇',
-      'idCardNo' => '370983200401087213',
+      'idCardHash' => idCardHash('370983200401087213'),
       'avatarUrl' => null,
       'password' => '123456',
       'role' => 'student',
@@ -61,7 +61,7 @@ function ensureDemoUsersSeeded() {
       'studentId' => '20260004',
       'username' => '陈雨桐',
       'fullName' => '陈雨桐',
-      'idCardNo' => '430524200404196428',
+      'idCardHash' => idCardHash('430524200404196428'),
       'avatarUrl' => null,
       'password' => '123456',
       'role' => 'student',
@@ -74,7 +74,7 @@ function ensureDemoUsersSeeded() {
       $student['studentId'],
       $student['username'],
       $student['fullName'],
-      $student['idCardNo'],
+      $student['idCardHash'],
       $student['avatarUrl'],
       $student['password'],
       $student['role']

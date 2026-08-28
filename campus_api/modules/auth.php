@@ -36,10 +36,6 @@ if ($method === 'POST' && $path === '/auth/login') {
 
   $role = normalizeRole($user['role'] ?? 'student');
   $token = jwt_generate((string)$user['id'], $role);
-  // 兼容旧 client：也写入 auth_tokens
-  $expiresAt = now_ms() + 7 * 24 * 60 * 60 * 1000;
-  $stmt2 = db()->prepare('INSERT INTO auth_tokens (token, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)');
-  $stmt2->execute([$token, $user['id'], $expiresAt, now_ms()]);
 
   respond(200, [
     'id' => (string)$user['id'],
@@ -82,7 +78,7 @@ if ($method === 'POST' && $path === '/auth/reset-password') {
     respond(400, ['message' => '身份证号格式不正确']);
   }
 
-  $stmt = db()->prepare('SELECT id, full_name, id_card_no FROM users WHERE student_id = ? LIMIT 1');
+  $stmt = db()->prepare('SELECT id, full_name, id_card_hash FROM users WHERE student_id = ? LIMIT 1');
   $stmt->execute([$studentId]);
   $user = $stmt->fetch();
   if (!$user) {
@@ -90,8 +86,8 @@ if ($method === 'POST' && $path === '/auth/reset-password') {
   }
 
   $dbName = normalizeName($user['full_name'] ?? '');
-  $dbIdCard = normalizeIdCard($user['id_card_no'] ?? '');
-  if ($dbName !== $fullName || $dbIdCard !== $idCardNo) {
+  $dbCardHash = (string)($user['id_card_hash'] ?? '');
+  if ($dbName !== $fullName || ($dbCardHash !== '' && $dbCardHash !== idCardHash($idCardNo))) {
     respond(401, ['message' => '身份信息不匹配']);
   }
 

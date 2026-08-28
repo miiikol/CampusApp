@@ -1,14 +1,9 @@
 <?php
 
 if ($method === 'GET' && $path === '/admin/reviews/pending') {
-  // Token 鉴权（优先），兼容旧 adminId 参数
-  $auth = authenticateOptional();
-  $adminId = trim((string)($_GET['adminId'] ?? ''));
-  if ($auth !== null) {
-    if ($auth['role'] !== 'admin') respond(403, ['message' => '仅管理员可访问']);
-  } else if (!isAdminUserId($adminId)) {
-    respond(403, ['message' => '仅管理员可访问']);
-  }
+  // 强制 Token 鉴权：仅管理员可访问
+  $auth = authenticate();
+  if ($auth['role'] !== 'admin') respond(403, ['message' => '仅管理员可访问']);
 
   $marketRows = db()->query("
     SELECT id, title, description AS summary, seller_id AS submitter_id, publish_time, 'MARKET' AS item_type
@@ -46,20 +41,16 @@ if ($method === 'GET' && $path === '/admin/reviews/pending') {
 
 if ($method === 'POST' && $path === '/admin/reviews/action') {
   $body = jsonBody();
-  $adminId = trim((string)($body['adminId'] ?? ''));
   $itemType = strtoupper(trim((string)($body['itemType'] ?? '')));
   $itemId = trim((string)($body['itemId'] ?? ''));
   $action = strtoupper(trim((string)($body['action'] ?? '')));
 
-  // Token 鉴权（优先），兼容旧 adminId 参数
-  $auth = authenticateOptional();
-  if ($auth !== null) {
-    if ($auth['role'] !== 'admin') respond(403, ['message' => '仅管理员可操作']);
-  } else if (!isAdminUserId($adminId)) {
-    respond(403, ['message' => '仅管理员可操作']);
-  }
+  // 强制 Token 鉴权：仅管理员可操作
+  $auth = authenticate();
+  if ($auth['role'] !== 'admin') respond(403, ['message' => '仅管理员可操作']);
+
   if ($itemType === '' || $itemId === '' || ($action !== 'APPROVE' && $action !== 'REJECT')) {
-    respond(400, ['message' => 'adminId/itemType/itemId/action 参数错误']);
+    respond(400, ['message' => 'itemType/itemId/action 参数错误']);
   }
 
   $table = null;
@@ -79,25 +70,21 @@ if ($method === 'POST' && $path === '/admin/reviews/action') {
 }
 
 if ($method === 'POST' && preg_match('#^/admin/comments/([^/]+)/ban$#', $path, $matches)) {
-
   $commentId = trim((string)$matches[1]);
   $body = jsonBody();
-  $adminId = trim((string)($body['adminId'] ?? ''));
   $reason = trim((string)($body['reason'] ?? '违规内容'));
 
-  // Token 鉴权（优先），兼容旧 adminId 参数
-  $auth = authenticateOptional();
-  if ($auth !== null) {
-    if ($auth['role'] !== 'admin') respond(403, ['message' => '仅管理员可操作']);
-  } else if (!isAdminUserId($adminId)) {
-    respond(403, ['message' => '仅管理员可操作']);
-  }
+  // 强制 Token 鉴权：仅管理员可操作
+  $auth = authenticate();
+  if ($auth['role'] !== 'admin') respond(403, ['message' => '仅管理员可操作']);
+
   if ($commentId === '') {
     respond(400, ['message' => 'commentId 不能为空']);
   }
 
+  $bannedBy = $auth['userId'];
   $stmt = db()->prepare("UPDATE news_comments SET status = 'BANNED', banned_by = ?, ban_reason = ?, ban_time = ? WHERE id = ? AND status <> 'BANNED'");
-  $stmt->execute([$adminId, $reason, now_ms(), $commentId]);
+  $stmt->execute([$bannedBy, $reason, now_ms(), $commentId]);
   if ($stmt->rowCount() === 0) {
     respond(404, ['message' => '评论不存在或已封禁']);
   }

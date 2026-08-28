@@ -5,12 +5,12 @@ import okhttp3.MultipartBody
 import retrofit2.http.*
 
 /**
- * 后端 REST API 定义。
+ * 后端 REST API 定义（v1 版本化路径）。
  *
  * 说明：
  * - 所有接口均为挂起函数，需在协程中调用
  * - 默认以 JSON 进行请求/响应序列化（GsonConverterFactory）
- * - 如需文件上传，改用 @Multipart 并在 DTO 外使用表单字段
+ * - API 路径使用 /v1/ 前缀，支持版本迭代
  */
 interface ApiService {
 
@@ -53,7 +53,7 @@ interface ApiService {
     @GET("news")
     suspend fun getNews(
         @Query("userId") userId: String? = null
-    ): List<NewsDto>
+    ): PagedResponse<NewsDto>
 
     /**
      * 管理员发布资讯
@@ -70,8 +70,10 @@ interface ApiService {
     @GET("news/{newsId}/comments")
     suspend fun getNewsComments(
         @Path("newsId") newsId: String,
-        @Query("userId") userId: String? = null
-    ): List<CommentDto>
+        @Query("userId") userId: String? = null,
+        @Query("page") page: Int? = null,
+        @Query("pageSize") pageSize: Int? = null
+    ): CommentListResponse
 
     @POST("news/{newsId}/comments")
     suspend fun createNewsComment(
@@ -113,7 +115,7 @@ interface ApiService {
     @GET("market")
     suspend fun getMarketItems(
         @Query("userId") userId: String? = null
-    ): List<MarketDto>
+    ): PagedResponse<MarketDto>
 
     @POST("market/{itemId}/favorites/toggle")
     suspend fun toggleMarketFavorite(
@@ -131,7 +133,7 @@ interface ApiService {
      * 拉取失物招领列表
      */
     @GET("lostfound")
-    suspend fun getLostFoundItems(): List<LostFoundDto>
+    suspend fun getLostFoundItems(): PagedResponse<LostFoundDto>
 
     /**
      * 发布失物招领（当前为 JSON 形式；若包含图片改为 Multipart）

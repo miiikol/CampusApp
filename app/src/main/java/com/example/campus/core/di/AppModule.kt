@@ -11,6 +11,7 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import okhttp3.CertificatePinner
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -43,6 +44,15 @@ object AppModule {
             builder.addInterceptor(HttpLoggingInterceptor().apply {
                 level = HttpLoggingInterceptor.Level.BODY
             })
+        } else {
+            // Release 构建启用 SSL Certificate Pinning，防止中间人攻击
+            builder.certificatePinner(
+                CertificatePinner.Builder()
+                    // 预置泛域名 pin；部署前请将 hash 替换为你 HTTPS 证书的 SHA256 指纹
+                    // 获取方式: openssl s_client -connect your-api.com:443 </dev/null 2>/dev/null | openssl x509 -noout -pubkey | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | base64
+                    // .add("your-api.com", "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
+                    .build()
+            )
         }
 
         return builder.build()
@@ -73,7 +83,6 @@ object AppModule {
             AppDatabase.MIGRATION_4_5,
             AppDatabase.MIGRATION_5_6
         )
-            .fallbackToDestructiveMigration()
             .build()
     }
 

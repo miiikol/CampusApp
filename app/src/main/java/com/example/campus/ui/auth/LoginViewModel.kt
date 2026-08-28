@@ -1,13 +1,14 @@
 package com.example.campus.ui.auth
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import com.example.campus.core.base.BaseViewModel
 import com.example.campus.core.common.Resource
 import com.example.campus.data.local.entity.UserEntity
 import com.example.campus.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import javax.inject.Inject
 
 /**
@@ -23,8 +24,9 @@ class LoginViewModel @Inject constructor(
     private val repository: UserRepository
 ) : BaseViewModel() {
 
-    private val _loginState = MutableLiveData<Resource<UserEntity>>()
-    val loginState: LiveData<Resource<UserEntity>> = _loginState
+    // 初始为 null 表示「空闲」，避免热流初始 Loading 值导致登录按钮一开始就显示「登录中」
+    private val _loginState = MutableStateFlow<Resource<UserEntity>?>(null)
+    val loginState: StateFlow<Resource<UserEntity>?> = _loginState.asStateFlow()
 
     /**
      * 触发登录流程。
@@ -41,9 +43,16 @@ class LoginViewModel @Inject constructor(
         }
 
         launch {
-            repository.login(studentId, password).collectLatest {
+            repository.login(studentId, password).collect {
                 _loginState.value = it
             }
         }
+    }
+
+    /**
+     * 登录结果被 UI 消费后重置状态，避免热流持久 Success 值导致重复导航或竞态。
+     */
+    fun resetState() {
+        _loginState.value = null
     }
 }

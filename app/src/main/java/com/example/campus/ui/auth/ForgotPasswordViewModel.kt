@@ -1,11 +1,12 @@
 package com.example.campus.ui.auth
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import com.example.campus.core.base.BaseViewModel
 import com.example.campus.core.common.Resource
 import com.example.campus.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import javax.inject.Inject
 
@@ -20,8 +21,9 @@ class ForgotPasswordViewModel @Inject constructor(
     private val repository: UserRepository
 ) : BaseViewModel() {
 
-    private val _resetState = MutableLiveData<Resource<String>>()
-    val resetState: LiveData<Resource<String>> = _resetState
+    // 初始为 null 表示「空闲」，避免热流初始 Loading 值导致按钮一开始就进入重置中状态
+    private val _resetState = MutableStateFlow<Resource<String>?>(null)
+    val resetState: StateFlow<Resource<String>?> = _resetState.asStateFlow()
 
     fun resetPassword(
         studentId: String,
@@ -50,15 +52,24 @@ class ForgotPasswordViewModel @Inject constructor(
             _resetState.value = Resource.Error("请输入新密码")
             return
         }
+        if (newPassword.length < 8) {
+            _resetState.value = Resource.Error("密码长度至少 8 位")
+            return
+        }
+        if (confirmPassword.isBlank()) {
+            _resetState.value = Resource.Error("请确认新密码")
+            return
+        }
         if (newPassword != confirmPassword) {
-            _resetState.value = Resource.Error("两次输入的密码不一致")
+            _resetState.value = Resource.Error("两次密码不一致")
             return
         }
 
         launch {
-            repository.resetPassword(studentId, fullName, idCardNo, newPassword).collectLatest {
-                _resetState.value = it
-            }
+            repository.resetPassword(studentId, fullName, idCardNo, newPassword)
+                .collectLatest {
+                    _resetState.value = it
+                }
         }
     }
 }

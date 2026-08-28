@@ -4,6 +4,12 @@ if ($method === 'GET' && $path === '/market') {
 
   $pg = parsePagination();
   $viewerId = trim((string)($_GET['userId'] ?? ''));
+
+  // APCu 缓存：列表缓存 30 秒，降低数据库压力
+  $cacheKey = cacheKey('/market', ['page' => $pg['page'], 'pageSize' => $pg['pageSize'], 'viewerId' => $viewerId]);
+  $cached = cacheGet($cacheKey);
+  if ($cached !== null) respond(200, $cached);
+
   if ($viewerId === '') {
     $stmt = db()->prepare("SELECT id, title, description, price, seller_id, image_url, publish_time, 0 AS is_favorite FROM market_items WHERE status = 'APPROVED' ORDER BY publish_time DESC LIMIT ? OFFSET ?");
     $stmt->execute([$pg['limit'], $pg['offset']]);
@@ -38,12 +44,14 @@ if ($method === 'GET' && $path === '/market') {
       'isFavorite' => ((int)($r['is_favorite'] ?? 0)) === 1,
     ];
   }, $rows);
-  respond(200, [
+  $response = [
     'data' => $out,
     'page' => $pg['page'],
     'pageSize' => $pg['pageSize'],
     'total' => $total,
-  ]);
+  ];
+  cacheSet($cacheKey, $response, 30);
+  respond(200, $response);
 }
 
 if ($method === 'POST' && preg_match('#^/market/([^/]+)/favorites/toggle$#', $path, $matches)) {
@@ -52,9 +60,9 @@ if ($method === 'POST' && preg_match('#^/market/([^/]+)/favorites/toggle$#', $pa
   $body = jsonBody();
   $userId = trim((string)($body['userId'] ?? ''));
 
-  // Token 鉴权
-  $auth = authenticateOptional();
-  if ($auth !== null && $auth['userId'] !== $userId) {
+  // 强制 Token 鉴权
+  $auth = authenticate();
+  if ($auth['userId'] !== $userId) {
     respond(403, ['message' => '无权操作']);
   }
   if ($itemId === '' || $userId === '') {
@@ -109,6 +117,9 @@ if ($method === 'POST' && $path === '/market') {
   $status = isAdminUserId($sellerId) ? 'APPROVED' : 'PENDING';
   $stmt = db()->prepare("INSERT INTO market_items (id, title, description, price, seller_id, image_url, publish_time, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
   $stmt->execute([$id, $title, $description, $price, $sellerId, $imageUrl, (int)$publishTime, $status]);
+
+  // 写入后清除列表缓存
+  cacheDeleteByPrefix('/market:');
 
   respond(200, [
     'id' => $id,

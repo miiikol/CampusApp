@@ -7,7 +7,11 @@ import android.view.ViewGroup
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
+import kotlinx.coroutines.launch
 import com.example.campus.R
 import com.example.campus.core.common.Resource
 import com.example.campus.core.ui.SnackType
@@ -61,37 +65,42 @@ class ForgotPasswordFragment : Fragment() {
             findNavController().popBackStack()
         }
 
-        viewModel.resetState.observe(viewLifecycleOwner) { state ->
-            when (state) {
-                is Resource.Loading -> {
-                    binding.btnResetPassword.isEnabled = false
-                    binding.btnResetPassword.text = getString(R.string.forgot_password_resetting)
-                    binding.tilStudentId.isEnabled = false
-                    binding.tilFullName.isEnabled = false
-                    binding.tilIdCardNo.isEnabled = false
-                    binding.tilNewPassword.isEnabled = false
-                    binding.tilConfirmPassword.isEnabled = false
-                }
-                is Resource.Success -> {
-                    binding.btnResetPassword.isEnabled = true
-                    binding.btnResetPassword.text = getString(R.string.forgot_password_reset_button)
-                    binding.tilStudentId.isEnabled = true
-                    binding.tilFullName.isEnabled = true
-                    binding.tilIdCardNo.isEnabled = true
-                    binding.tilNewPassword.isEnabled = true
-                    binding.tilConfirmPassword.isEnabled = true
-                    showSnack(state.data ?: getString(R.string.forgot_password_reset_success), type = SnackType.SUCCESS)
-                    findNavController().popBackStack()
-                }
-                is Resource.Error -> {
-                    binding.btnResetPassword.isEnabled = true
-                    binding.btnResetPassword.text = getString(R.string.forgot_password_reset_button)
-                    binding.tilStudentId.isEnabled = true
-                    binding.tilFullName.isEnabled = true
-                    binding.tilIdCardNo.isEnabled = true
-                    binding.tilNewPassword.isEnabled = true
-                    binding.tilConfirmPassword.isEnabled = true
-                    showSnack(state.message ?: getString(R.string.forgot_password_reset_failed), type = SnackType.ERROR)
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.resetState.collect { state ->
+                    when (state) {
+                        null -> Unit
+                        is Resource.Loading -> {
+                            binding.btnResetPassword.isEnabled = false
+                            binding.btnResetPassword.text = getString(R.string.forgot_password_resetting)
+                            binding.tilStudentId.isEnabled = false
+                            binding.tilFullName.isEnabled = false
+                            binding.tilIdCardNo.isEnabled = false
+                            binding.tilNewPassword.isEnabled = false
+                            binding.tilConfirmPassword.isEnabled = false
+                        }
+                        is Resource.Success -> {
+                            binding.btnResetPassword.isEnabled = true
+                            binding.btnResetPassword.text = getString(R.string.forgot_password_reset_button)
+                            binding.tilStudentId.isEnabled = true
+                            binding.tilFullName.isEnabled = true
+                            binding.tilIdCardNo.isEnabled = true
+                            binding.tilNewPassword.isEnabled = true
+                            binding.tilConfirmPassword.isEnabled = true
+                            showSnack(state.data ?: getString(R.string.forgot_password_reset_success), type = SnackType.SUCCESS)
+                            findNavController().popBackStack()
+                        }
+                        is Resource.Error -> {
+                            binding.btnResetPassword.isEnabled = true
+                            binding.btnResetPassword.text = getString(R.string.forgot_password_reset_button)
+                            binding.tilStudentId.isEnabled = true
+                            binding.tilFullName.isEnabled = true
+                            binding.tilIdCardNo.isEnabled = true
+                            binding.tilNewPassword.isEnabled = true
+                            binding.tilConfirmPassword.isEnabled = true
+                            showSnack(state.message ?: getString(R.string.forgot_password_reset_failed), type = SnackType.ERROR)
+                        }
+                    }
                 }
             }
         }

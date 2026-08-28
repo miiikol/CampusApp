@@ -1,15 +1,12 @@
 <?php
 
 if ($method === 'POST' && preg_match('#^/users/([^/]+)/profile$#', $path, $matches)) {
-  ensureDemoContentSeeded();
   $routeUserId = (string)$matches[1];
 
-  // 优先从 Token 鉴权
-  $auth = authenticateOptional();
-  if ($auth !== null) {
-    if ($auth['userId'] !== $routeUserId) {
-      respond(403, ['message' => '无权操作此用户']);
-    }
+  // 强制 Token 鉴权
+  $auth = authenticate();
+  if ($auth['userId'] !== $routeUserId) {
+    respond(403, ['message' => '无权操作此用户']);
   }
 
   if (isBuiltinAdminId($routeUserId)) {
