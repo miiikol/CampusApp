@@ -14,7 +14,9 @@ import android.graphics.drawable.GradientDrawable
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.example.campus.R
 import com.example.campus.core.ui.SnackType
 import com.example.campus.core.ui.showSnack
@@ -23,6 +25,7 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
 import kotlin.math.max
 
@@ -144,27 +147,31 @@ class CourseFragment : Fragment(R.layout.fragment_course) {
             )
         }
 
-        viewLifecycleOwner.lifecycleScope.launchWhenStarted {
-            viewModel.courses.collectLatest { courses ->
-                latestCourses = courses
-                scheduleView.setCourses(courses)
-                maxWeek = max(
-                    1,
-                    courses.mapNotNull { CourseScheduleView.weekRangeMax(it.weekRange) }.maxOrNull() ?: 1
-                )
-                if (currentWeek > maxWeek) {
-                    currentWeek = maxWeek
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.courses.collectLatest { courses ->
+                    latestCourses = courses
+                    scheduleView.setCourses(courses)
+                    maxWeek = max(
+                        1,
+                        courses.mapNotNull { CourseScheduleView.weekRangeMax(it.weekRange) }.maxOrNull() ?: 1
+                    )
+                    if (currentWeek > maxWeek) {
+                        currentWeek = maxWeek
+                    }
+                    scheduleView.setCurrentWeek(currentWeek)
+                    updateWeekUI()
                 }
-                scheduleView.setCurrentWeek(currentWeek)
-                updateWeekUI()
             }
         }
 
-        viewLifecycleOwner.lifecycleScope.launchWhenStarted {
-            viewModel.refreshState.collectLatest { state ->
-                val err = (state as? com.example.campus.core.common.Resource.Error)?.message
-                if (!err.isNullOrBlank()) {
-                    showSnack(err, type = SnackType.ERROR)
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.refreshState.collectLatest { state ->
+                    val err = (state as? com.example.campus.core.common.Resource.Error)?.message
+                    if (!err.isNullOrBlank()) {
+                        showSnack(err, type = SnackType.ERROR)
+                    }
                 }
             }
         }
