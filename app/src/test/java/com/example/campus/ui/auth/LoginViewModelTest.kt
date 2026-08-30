@@ -1,5 +1,4 @@
 package com.example.campus.ui.auth
-import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.example.campus.core.common.Resource
 import com.example.campus.data.local.entity.UserEntity
 import com.example.campus.data.repository.UserRepository
@@ -20,9 +19,6 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LoginViewModelTest {
-
-    @get:Rule
-    val instantTaskExecutorRule = InstantTaskExecutorRule()
 
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
@@ -57,7 +53,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun login_success_updatesLiveDataWithSuccess() = runTest {
+    fun login_success_updatesStateFlowWithSuccess() = runTest {
         val user = UserEntity(
             id = "u1", username = "张三", studentId = "student01",
             avatarUrl = null, token = "token123", role = "student"
@@ -77,7 +73,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun login_networkError_updatesLiveDataWithError() = runTest {
+    fun login_networkError_updatesStateFlowWithError() = runTest {
         every { repository.login("student01", "wrong") } returns flowOf(
             Resource.Error("学号或密码错误(401)")
         )

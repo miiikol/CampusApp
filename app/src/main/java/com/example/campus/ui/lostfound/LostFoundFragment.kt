@@ -90,18 +90,25 @@ class LostFoundFragment : Fragment() {
         setupListeners()
         observeViewModel()
 
-        // Receive location result from MapPickerFragment
+        // 接收 MapPickerFragment 回传的位置结果（用 StateFlow 替代 LiveData，统一状态管理规范）
         val handle = findNavController().currentBackStackEntry?.savedStateHandle
-        handle?.getLiveData<MapLocation>("selected_location")?.observe(viewLifecycleOwner) { loc ->
-            lastPickedLocation = loc
-            showSnack(
-                "已选择位置: ${loc.address ?: "${loc.latitude},${loc.longitude}"}",
-                type = SnackType.SUCCESS
-            )
-            handle.remove<MapLocation>("selected_location")
-            if (pendingOpenPublishDialog) {
-                pendingOpenPublishDialog = false
-                showPublishDialog(loc)
+        handle?.let { h ->
+            viewLifecycleOwner.lifecycleScope.launch {
+                viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    h.getStateFlow<MapLocation?>("selected_location", null).collect { loc ->
+                        if (loc == null) return@collect
+                        lastPickedLocation = loc
+                        showSnack(
+                            "已选择位置: ${loc.address ?: "${loc.latitude},${loc.longitude}"}",
+                            type = SnackType.SUCCESS
+                        )
+                        h.remove<MapLocation>("selected_location")
+                        if (pendingOpenPublishDialog) {
+                            pendingOpenPublishDialog = false
+                            showPublishDialog(loc)
+                        }
+                    }
+                }
             }
         }
     }
