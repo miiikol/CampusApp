@@ -35,6 +35,7 @@ class AdminReviewAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(item: AdminPendingReviewDto) {
+            // 按内容类型展示中文标签：二手商品 / 失物招领
             binding.tvType.text = if (item.itemType.equals("MARKET", true)) "二手商品" else "失物招领"
             binding.tvTitle.text = item.title
             binding.tvSummary.text = item.summary
@@ -44,6 +45,7 @@ class AdminReviewAdapter(
     }
 
     private object Diff : DiffUtil.ItemCallback<AdminPendingReviewDto>() {
+        // 以「类型 + ID」作为唯一键判断是否为同一条审核项
         override fun areItemsTheSame(oldItem: AdminPendingReviewDto, newItem: AdminPendingReviewDto): Boolean {
             return oldItem.itemType == newItem.itemType && oldItem.itemId == newItem.itemId
         }

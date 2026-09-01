@@ -32,6 +32,7 @@ class FakeNotificationDao : NotificationDao {
     }
 
     override suspend fun insertAll(items: List<NotificationEntity>) {
+        // 按 id 去重，仅追加本地不存在的通知
         val existingIds = state.value.map { it.id }.toSet()
         val newItems = items.filter { it.id !in existingIds }
         state.value = state.value + newItems
@@ -41,9 +42,5 @@ class FakeNotificationDao : NotificationDao {
         state.value = state.value.map {
             if (it.userId == userId && !it.isRead) it.copy(isRead = true) else it
         }
-    }
-
-    override suspend fun clearUserNotifications(userId: String) {
-        state.value = state.value.filter { it.userId != userId }
     }
 }

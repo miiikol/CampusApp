@@ -46,6 +46,7 @@ class NewsAdapter(private val onItemClick: (NewsEntity) -> Unit) :
             binding.tvSummary.text = news.summary
             binding.tvDate.text = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(news.publishDate))
 
+            // 有封面图时用 Glide 加载，否则使用兜底占位图
             if (!news.imageUrl.isNullOrEmpty()) {
                 Glide.with(binding.root.context)
                     .load(news.imageUrl)
@@ -56,6 +57,7 @@ class NewsAdapter(private val onItemClick: (NewsEntity) -> Unit) :
                 binding.ivNewsImage.setImageResource(R.drawable.ic_launcher_foreground)
             }
 
+            // 点击整条条目，将资讯实体上抛给调用方
             binding.root.setOnClickListener {
                 onItemClick(news)
             }

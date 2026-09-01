@@ -23,6 +23,6 @@ data class NewsEntity(
     val content: String,
     val imageUrl: String?,
     val publishDate: Long,
-    val type: String, // "NEWS" or "NOTICE"
+    val type: String, // "NEWS"（新闻）或 "NOTICE"（通知）
     val isFavorite: Boolean = false
 )

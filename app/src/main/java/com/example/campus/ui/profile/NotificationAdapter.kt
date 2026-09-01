@@ -39,6 +39,7 @@ class NotificationAdapter : ListAdapter<NotificationEntity, NotificationAdapter.
     }
 
     private object Diff : DiffUtil.ItemCallback<NotificationEntity>() {
+        // 以通知 ID 作为唯一键判断是否为同一条通知
         override fun areItemsTheSame(oldItem: NotificationEntity, newItem: NotificationEntity): Boolean = oldItem.id == newItem.id
         override fun areContentsTheSame(oldItem: NotificationEntity, newItem: NotificationEntity): Boolean = oldItem == newItem
     }

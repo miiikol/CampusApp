@@ -43,6 +43,7 @@ class AdminFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        // 通过/驳回点击均回调 ViewModel，传入对应审核动作
         adapter = AdminReviewAdapter(
             onApprove = { viewModel.review(it.itemType, it.itemId, "APPROVE") },
             onReject = { viewModel.review(it.itemType, it.itemId, "REJECT") }
@@ -57,12 +58,14 @@ class AdminFragment : Fragment() {
     private fun observe() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                // 观察待审核列表：刷新数据并控制空态提示
                 launch {
                     viewModel.items.collect {
                         adapter.submitList(it)
                         binding.tvEmpty.visibility = if (it.isEmpty()) View.VISIBLE else View.GONE
                     }
                 }
+                // 观察列表加载状态，仅在加载失败时提示
                 launch {
                     viewModel.status.collect { status ->
                         if (status is Resource.Error) {
@@ -70,6 +73,7 @@ class AdminFragment : Fragment() {
                         }
                     }
                 }
+                // 观察单次审核操作结果，成功后/失败后都重置状态避免重复提示
                 launch {
                     viewModel.actionStatus.collect { status ->
                         when (status) {

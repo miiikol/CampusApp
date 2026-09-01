@@ -8,7 +8,6 @@ import kotlinx.coroutines.launch
 
 /**
  * ViewModel 基类，封装协程启动与统一异常处理。
- *
  * 所有业务 ViewModel 继承此类后，通过 [launch] 启动协程，
  * 异常会被自动捕获并交由 [handleError] 处理，避免因未捕获异常导致应用崩溃。
  */

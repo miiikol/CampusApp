@@ -114,6 +114,7 @@ class LostFoundFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
+        // 点击条目弹出详情对话框
         lostFoundAdapter = LostFoundAdapter { item ->
             showItemDetail(item)
         }
@@ -190,6 +191,7 @@ class LostFoundFragment : Fragment() {
     }
 
     private fun setupListeners() {
+        // 点击发布按钮：直接打开发布对话框，沿用上次选中的位置
         binding.fabAdd.setOnClickListener {
             pendingOpenPublishDialog = false
             showPublishDialog(lastPickedLocation)
@@ -350,6 +352,7 @@ class LostFoundFragment : Fragment() {
                             null -> Unit
                             is Resource.Loading -> Unit
                             is Resource.Error -> {
+                                // 后端将“已提交审核”也走 Error 通道，按文案区分提示类型
                                 val message = status.message ?: "发布失败"
                                 val snackType = if (message.contains("已提交审核")) SnackType.SUCCESS else SnackType.ERROR
                                 showSnack(message, type = snackType)

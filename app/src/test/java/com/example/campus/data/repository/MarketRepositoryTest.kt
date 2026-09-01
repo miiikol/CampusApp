@@ -20,6 +20,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
 
+/**
+ * 针对 [MarketRepository] 的单元测试：
+ * 覆盖刷新覆盖缓存、异常保留缓存、收藏同步本地、发布成功写库等场景。
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MarketRepositoryTest {
 
@@ -53,6 +57,7 @@ class MarketRepositoryTest {
         val result = repo.refreshItems()
 
         assertTrue(result is Resource.Success)
+        // 刷新成功后缓存被两条远程数据覆盖，并按 publishTime 倒序排列
         val after = dao.snapshot()
         assertEquals(2, after.size)
         assertEquals(listOf("m2", "m1"), after.map { it.id })
@@ -78,6 +83,7 @@ class MarketRepositoryTest {
         val result = repo.refreshItems()
 
         assertTrue(result is Resource.Error)
+        // 网络异常时返回错误，且本地缓存保持不变
         val after = dao.snapshot()
         assertEquals(1, after.size)
         assertEquals("old", after.single().id)
@@ -91,6 +97,7 @@ class MarketRepositoryTest {
         val favoriteDao = mockk<MarketFavoriteDao>(relaxed = true)
         val context = mockk<Context>(relaxed = true)
 
+        // 模拟已登录用户，验证服务端返回的收藏标记会同步到本地
         coEvery { userDao.getCurrentUser() } returns UserEntity(
             id = "user1", username = "admin", studentId = "admin01",
             avatarUrl = null, token = "tok", role = "student"
@@ -125,6 +132,7 @@ class MarketRepositoryTest {
             sellerId = "u1", imageUrl = null, publishTime = 100L
         )
 
+        // 服务端返回“已审核(APPROVED)”状态的商品，作为发布成功的结果
         val responseDto = MarketDto(
             id = "new1", title = "New", description = "Desc", price = 50.0,
             sellerId = "u1", imageUrl = null, publishTime = 100L, status = "APPROVED"

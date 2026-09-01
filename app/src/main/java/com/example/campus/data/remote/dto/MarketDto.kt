@@ -15,7 +15,7 @@ data class MarketDto(
     val imageUrl: String?,
     val publishTime: Long,
     val isFavorite: Boolean = false,
-    val status: String? = null
+    val status: String? = null // 审核状态，如 pending / approved / rejected
 )
 
 /** 转换为 Room 实体，[isFavorite] 参数用于合并本地收藏状态 */

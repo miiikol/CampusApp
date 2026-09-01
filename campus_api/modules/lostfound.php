@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * 失物招领模块：发布与列表查询
+ */
+
+// 列表：返回已审核通过的招领信息，带 30 秒缓存
 if ($method === 'GET' && $path === '/lostfound') {
   $pg = parsePagination();
 
@@ -38,6 +43,7 @@ if ($method === 'GET' && $path === '/lostfound') {
   respond(200, $response);
 }
 
+// 发布招领信息：管理员直接通过，普通用户进入待审核
 if ($method === 'POST' && $path === '/lostfound') {
   $body = jsonBody();
 
@@ -63,19 +69,22 @@ if ($method === 'POST' && $path === '/lostfound') {
     respond(400, ['message' => '字段不完整或类型错误']);
   }
 
-  if ($ownerId === '') {
-    $ownerId = is_string($contactInfo) ? trim($contactInfo) : '';
-  }
+  // 管理员发布直接通过审核，普通用户进入待审核
   $status = isAdminUserId($ownerId) ? 'APPROVED' : 'PENDING';
 
-  $stmt = db()->prepare("INSERT INTO lost_found_items (id, title, description, location, type, image_url, contact_info, publish_time, latitude, longitude, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-  $stmt->execute([
-    $id, $title, $description, $location, $type,
-    $imageUrl, $contactInfo, (int)$publishTime,
-    is_numeric($latitude) ? (float)$latitude : null,
-    is_numeric($longitude) ? (float)$longitude : null,
-    $status,
-  ]);
+  try {
+    $stmt = db()->prepare("INSERT INTO lost_found_items (id, title, description, location, type, image_url, contact_info, publish_time, latitude, longitude, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([
+      $id, $title, $description, $location, $type,
+      $imageUrl, $contactInfo, (int)$publishTime,
+      is_numeric($latitude) ? (float)$latitude : null,
+      is_numeric($longitude) ? (float)$longitude : null,
+      $status,
+    ]);
+  } catch (Exception $e) {
+    logError('lostfound publish', $e);
+    respond(400, ['message' => '发布失败，请重试']);
+  }
 
   // 写入后清除列表缓存
   cacheDeleteByPrefix('/lostfound:');

@@ -14,13 +14,14 @@ data class CourseDto(
     val dayOfWeek: Int,
     val startSection: Int,
     val endSection: Int,
-    val weekRange: String,
-    val color: Int = -1,
-    val isRemote: Boolean = true,
-    val baseCourseId: Long = 0,
-    val onlyWeek: Int = 0
+    val weekRange: String, // 上课周次范围，如 "1-16"
+    val color: Int = -1, // 课程表显示颜色
+    val isRemote: Boolean = true, // 是否为远程课程
+    val baseCourseId: Long = 0, // 被自定义覆盖的原始课程 ID，0 表示新增课程
+    val onlyWeek: Int = 0 // 仅在指定周生效（配合 scope="week" 使用），0 表示不限
 )
 
+/** 将网络 DTO 转换为 Room 实体 */
 fun CourseDto.toEntity(): CourseEntity {
     return CourseEntity(
         id = id,

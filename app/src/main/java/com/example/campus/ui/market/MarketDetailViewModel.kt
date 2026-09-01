@@ -51,11 +51,12 @@ class MarketDetailViewModel @Inject constructor(
         }
     }
 
+    /** 切换当前商品的收藏状态：取反后提交远端。 */
     fun toggleFavorite() {
         val current = _item.value ?: return
         launch {
             val uid = _currentUserId.value ?: return@launch
-            repository.toggleFavorite(uid, current.id, !current.isFavorite)
+            repository.toggleFavorite(uid, current.id)
         }
     }
 }

@@ -1,5 +1,15 @@
 <?php
 
+/**
+ * 数据库连接
+ *
+ * 提供全局唯一的 PDO 单例，连接 MySQL；配置项通过 env() 读取，
+ * 生产环境可启用持久连接以减少频繁的 TCP 握手开销。
+ */
+
+/**
+ * 获取全局唯一 PDO 实例（惰性创建）
+ */
 function db() {
   static $pdo = null;
   if ($pdo) return $pdo;

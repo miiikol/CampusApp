@@ -23,6 +23,7 @@ interface NotificationDao {
     @Query("SELECT COUNT(*) FROM notifications_local WHERE userId = :userId AND isRead = 0")
     fun getUnreadCount(userId: String): Flow<Int>
 
+    /** 一次性获取未读通知数量（挂起函数，用于需要即时结果的场景）。 */
     @Query("SELECT COUNT(*) FROM notifications_local WHERE userId = :userId AND isRead = 0")
     suspend fun getUnreadCountNow(userId: String): Int
 
@@ -37,8 +38,4 @@ interface NotificationDao {
     /** 标记当前用户所有未读通知为已读 */
     @Query("UPDATE notifications_local SET isRead = 1 WHERE userId = :userId AND isRead = 0")
     suspend fun markAllRead(userId: String)
-
-    /** 清空用户通知缓存 */
-    @Query("DELETE FROM notifications_local WHERE userId = :userId")
-    suspend fun clearUserNotifications(userId: String)
 }

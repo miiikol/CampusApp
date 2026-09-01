@@ -36,27 +36,7 @@ interface CourseDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCourses(courses: List<CourseEntity>)
 
-    /**
-     * 插入/更新单条课程。
-     */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertCourse(course: CourseEntity): Long
-
-    @Query("SELECT * FROM courses WHERE id = :id LIMIT 1")
-    suspend fun getCourseById(id: Long): CourseEntity?
-
-    @Query("SELECT * FROM courses WHERE baseCourseId = :baseCourseId AND onlyWeek = :week LIMIT 1")
-    suspend fun getOverrideCourse(baseCourseId: Long, week: Int): CourseEntity?
-
-    @Query("SELECT id FROM courses WHERE isRemote = 0 AND baseCourseId = 0 AND onlyWeek = 0")
-    suspend fun getCustomizedBaseCourseIds(): List<Long>
-
-    @Query("DELETE FROM courses WHERE isRemote = 1 AND baseCourseId = 0 AND onlyWeek = 0")
-    suspend fun deleteRemoteBaseCourses()
-
-    @Query("DELETE FROM courses WHERE id = :id")
-    suspend fun deleteCourseById(id: Long)
-
+    /** 清空课程表。 */
     @Query("DELETE FROM courses")
     suspend fun clearAllCourses()
 }

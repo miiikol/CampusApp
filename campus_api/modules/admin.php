@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * 管理端模块：内容审核与评论封禁
+ */
+
+// 获取待审核内容：合并二手市场与失物招领的 PENDING 记录
 if ($method === 'GET' && $path === '/admin/reviews/pending') {
   // 强制 Token 鉴权：仅管理员可访问
   $auth = authenticate();
@@ -20,6 +25,7 @@ if ($method === 'GET' && $path === '/admin/reviews/pending') {
     LIMIT 200
   ")->fetchAll();
 
+  // 合并后按发布时间倒序，最多返回 300 条
   $merged = array_merge($marketRows, $lostRows);
   usort($merged, function($a, $b) {
     return (int)$b['publish_time'] <=> (int)$a['publish_time'];
@@ -39,6 +45,7 @@ if ($method === 'GET' && $path === '/admin/reviews/pending') {
   respond(200, $out);
 }
 
+// 审核操作：通过或拒绝待审核内容
 if ($method === 'POST' && $path === '/admin/reviews/action') {
   $body = jsonBody();
   $itemType = strtoupper(trim((string)($body['itemType'] ?? '')));
@@ -69,6 +76,7 @@ if ($method === 'POST' && $path === '/admin/reviews/action') {
   respond(200, ['message' => '操作成功', 'status' => $targetStatus]);
 }
 
+// 封禁评论：仅管理员可操作
 if ($method === 'POST' && preg_match('#^/admin/comments/([^/]+)/ban$#', $path, $matches)) {
   $commentId = trim((string)$matches[1]);
   $body = jsonBody();

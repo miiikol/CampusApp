@@ -26,8 +26,4 @@ class FakeMarketFavoriteDao : MarketFavoriteDao {
     override suspend fun clearUserFavorites(userId: String) {
         data.remove(userId)
     }
-
-    override suspend fun getFavoriteIds(userId: String): List<String> {
-        return data[userId].orEmpty().toList()
-    }
 }

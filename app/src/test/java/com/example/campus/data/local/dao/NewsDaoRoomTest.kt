@@ -15,6 +15,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
+/**
+ * 使用 Robolectric 与 Room 内存数据库对 [NewsDao] 做真库测试：
+ * 验证插入后的倒序查询、按 ID 查询及收藏状态更新。
+ */
 @RunWith(RobolectricTestRunner::class)
 @OptIn(ExperimentalCoroutinesApi::class)
 class NewsDaoRoomTest {
@@ -24,6 +28,7 @@ class NewsDaoRoomTest {
 
     @Before
     fun setUp() {
+        // 内存数据库 + 允许主线程查询，避免真实设备依赖
         db = Room.inMemoryDatabaseBuilder(
             ApplicationProvider.getApplicationContext(),
             AppDatabase::class.java
@@ -70,6 +75,7 @@ class NewsDaoRoomTest {
 
         dao.insertNews(items)
 
+        // getAllNews 按 publishDate 倒序返回
         val all = dao.getAllNews().first()
         assertEquals(listOf("n2", "n3", "n1"), all.map { it.id })
 

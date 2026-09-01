@@ -10,6 +10,8 @@ require_once __DIR__ . '/config/env.php';
 loadEnv(__DIR__);
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/includes/helpers.php';
+// 提供 ensureAppMetaTable/getMetaValue/setMetaValue 等函数，供种子数据播种调用
+require_once __DIR__ . '/includes/db_schema.php';
 
 echo "=== Campus API 数据库迁移 ===\n";
 echo "数据库: " . env('DB_NAME', 'campus_api') . "\n\n";
@@ -265,6 +267,9 @@ echo "\n✅ 数据库迁移完成！\n";
 // ================================
 // 辅助函数
 // ================================
+/**
+ * 安全执行 ALTER：重复执行触发“列已存在”异常时视为正常，跳过即可
+ */
 function safeAlter(PDO $pdo, string $sql): void {
   try {
     $pdo->exec($sql);

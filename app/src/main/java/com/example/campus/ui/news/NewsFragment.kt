@@ -46,11 +46,13 @@ class NewsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         
+        // 初始化列表并订阅 ViewModel 状态
         setupRecyclerView()
         observeViewModel()
     }
 
     private fun setupRecyclerView() {
+        // 点击资讯条目跳转详情，通过 newsId 传递参数
         newsAdapter = NewsAdapter { news ->
             findNavController().navigate(
                 com.example.campus.R.id.newsDetailFragment,
@@ -72,11 +74,12 @@ class NewsFragment : Fragment() {
                     }
                 }
                 
+                // 收集加载状态，仅在出错时提示
                 launch {
                     viewModel.status.collect { status ->
                         when(status) {
                             is Resource.Loading -> {
-                                // Show loading if needed
+                                // 需要时展示加载中
                             }
                             is Resource.Error -> {
                                 showSnack(status.message ?: "加载失败", type = SnackType.ERROR)

@@ -8,6 +8,10 @@ data class LikeToggleRequest(
     val userId: String
 )
 
+/**
+ * 收藏切换请求体。
+ * 通用结构，用于资讯收藏、二手收藏等接口。
+ */
 data class FavoriteToggleRequest(
     val userId: String
 )

@@ -24,7 +24,7 @@ function uploadToLocal(string $tmpPath, string $originalName): string {
 
   $uploadDir = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'uploads';
   if (!is_dir($uploadDir)) {
-    @mkdir($uploadDir, 0777, true);
+    @mkdir($uploadDir, 0755, true);
   }
   if (!is_dir($uploadDir)) {
     respond(500, ['message' => '服务器错误：无法创建上传目录']);
@@ -52,6 +52,10 @@ function buildPublicUrl(string $path): string {
 
   $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
   $host = (string)($_SERVER['HTTP_HOST'] ?? 'localhost');
+  // 防止 Host 头注入：仅允许域名/IP 合法字符，否则回退到 localhost
+  if (!preg_match('/^[a-zA-Z0-9.:\-\[\]]+$/', $host)) {
+    $host = 'localhost';
+  }
   $scriptName = (string)($_SERVER['SCRIPT_NAME'] ?? '/campus_api/index.php');
   $basePath = rtrim(str_replace('\\', '/', dirname($scriptName)), '/');
   return $scheme . '://' . $host . $basePath . $path;

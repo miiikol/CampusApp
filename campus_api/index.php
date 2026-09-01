@@ -1,4 +1,13 @@
 <?php
+
+/**
+ * Campus API 入口
+ *
+ * 原生 PHP 手写的 REST API 后端，统一返回 JSON。
+ * 职责：加载配置与公共模块、处理 CORS、解析请求路径与版本、
+ *       分发到对应业务模块，并记录请求日志。
+ */
+
 header('Content-Type: application/json; charset=utf-8');
 
 // 加载环境变量（必须在其他模块之前）
@@ -74,8 +83,8 @@ require_once __DIR__ . '/includes/storage.php';
 require_once __DIR__ . '/includes/cache.php';
 require_once __DIR__ . '/includes/db_schema.php';
 
-// 生产环境不自动加载种子数据；仅开发/演示时通过环境变量 SESSION_SEED=1 启用
-if (env('SESSION_SEED', '1') === '1' || env('APP_DEBUG', 'false') === 'true') {
+// 生产环境默认不自动加载种子数据；仅开发/演示时通过环境变量 SESSION_SEED=1 启用
+if (env('SESSION_SEED', '0') === '1' || env('APP_DEBUG', 'false') === 'true') {
   require_once __DIR__ . '/includes/seed_data.php';
 }
 
@@ -95,8 +104,10 @@ $modules = [
   'admin',
 ];
 
+// 依次加载各业务模块的路由，命中后模块内直接响应并退出
 foreach ($modules as $module) {
   require __DIR__ . '/modules/' . $module . '.php';
 }
 
+// 未命中任何路由
 respond(404, ['message' => 'Not Found', 'path' => $path, 'method' => $method]);

@@ -25,6 +25,12 @@ class ForgotPasswordViewModel @Inject constructor(
     private val _resetState = MutableStateFlow<Resource<String>?>(null)
     val resetState: StateFlow<Resource<String>?> = _resetState.asStateFlow()
 
+    /**
+     * 提交密码重置请求。
+     *
+     * 依次校验学号、姓名、身份证号（18 位）、新密码（至少 8 位）及两次密码一致性，
+     * 校验通过后调用 [UserRepository.resetPassword] 并收集结果更新 [_resetState]。
+     */
     fun resetPassword(
         studentId: String,
         fullName: String,

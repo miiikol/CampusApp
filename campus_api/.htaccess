@@ -1,6 +1,11 @@
 RewriteEngine On
 RewriteBase /campus_api/
 
+# 关键：将 Authorization 头传递给 PHP。
+# Apache 在 RewriteRule 重写后默认会丢弃该头，导致 Bearer Token 读不到（后端报“未提供认证令牌”）
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]

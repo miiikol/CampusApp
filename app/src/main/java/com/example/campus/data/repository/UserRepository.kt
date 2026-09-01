@@ -41,6 +41,7 @@ class UserRepository @Inject constructor(
 
     private fun toHttpErrorMessage(e: HttpException): String {
         val url = e.response()?.raw()?.request?.url?.toString()
+        // 针对登录/重置密码接口定制 401/404 的错误文案
         val isLoginApi = url?.contains("/auth/login", ignoreCase = true) == true
         val isResetPasswordApi = url?.contains("/auth/reset-password", ignoreCase = true) == true
         val base = when (e.code()) {
@@ -92,13 +93,18 @@ class UserRepository @Inject constructor(
      */
     fun getUser(): Flow<UserEntity?> = dao.getUser()
 
+    /** 退出登录，清空当前用户与课表缓存。 */
     suspend fun logout() {
         courseDao.clearAllCourses()
         dao.clearUser()
     }
 
+    /**
+     * 更新用户昵称，成功后同步本地缓存中的用户名与头像。
+     */
     suspend fun updateNickname(userId: String, nickname: String): Resource<Unit> {
         val name = nickname.trim()
+        // 本地先做基础校验，避免无意义的网络请求
         if (name.isBlank()) return Resource.Error("昵称不能为空")
         if (name.length > 20) return Resource.Error("昵称过长")
         return try {
@@ -122,9 +128,15 @@ class UserRepository @Inject constructor(
         }
     }
 
+    /**
+     * 更新用户头像。
+     *
+     * 本地图片先上传换取远端 URL，成功后同步本地缓存。
+     */
     suspend fun updateAvatar(userId: String, avatarUrl: String?): Resource<Unit> {
         return try {
             val avatarRaw = avatarUrl?.trim().orEmpty()
+            // 本地图片（content/file 协议）需先上传，远端 URL 直接复用
             val finalAvatarUrl = if (avatarRaw.startsWith("content://", ignoreCase = true) ||
                 avatarRaw.startsWith("file://", ignoreCase = true)
             ) {
@@ -168,6 +180,11 @@ class UserRepository @Inject constructor(
         return api.uploadImage(part).url
     }
 
+    /**
+     * 通过学号、姓名、身份证号校验身份后重置密码。
+     *
+     * 以 Flow 形式推送 Loading/Success/Error，成功返回后端提示消息。
+     */
     fun resetPassword(
         studentId: String,
         fullName: String,

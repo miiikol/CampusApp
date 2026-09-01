@@ -11,6 +11,7 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.runBlocking
 import okhttp3.CertificatePinner
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -21,7 +22,6 @@ import javax.inject.Singleton
 
 /**
  * 应用级依赖注入模块，提供网络与数据库相关的单例依赖。
- *
  * 内容：
  * - OkHttpClient（含日志拦截器与超时设置）
  * - Retrofit（绑定基础 URL 与 Gson 转换器）
@@ -33,11 +33,30 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
+    fun provideOkHttpClient(userDao: UserDao): OkHttpClient {
+        // 连接/读取/写入统一设置 30 秒超时，避免请求长时间挂起
         val builder = OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
+
+        // 认证拦截器：从本地 Room 读取当前用户 token，附加到所有请求的 Authorization 头。
+        // 后端受保护接口（课表/资讯/二手/通知等）依赖 Bearer Token 鉴权；未登录时不附加。
+        // 注意：本拦截器运行在 OkHttp 线程池（非主线程），runBlocking 不会阻塞 UI。
+        builder.addInterceptor { chain ->
+            val token = runBlocking {
+                runCatching { userDao.getCurrentUser()?.token }.getOrNull()
+            }
+            if (token.isNullOrBlank()) {
+                chain.proceed(chain.request())
+            } else {
+                chain.proceed(
+                    chain.request().newBuilder()
+                        .header("Authorization", "Bearer $token")
+                        .build()
+                )
+            }
+        }
 
         // Debug 构建输出 BODY 日志以便调试；Release 仅输出 HEADERS，不泄露敏感数据
         if (BuildConfig.DEBUG) {

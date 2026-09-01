@@ -44,6 +44,9 @@ class CourseViewModel @Inject constructor(
         refresh()
     }
 
+    /**
+     * 拉取并刷新课程数据，加载与结果状态通过 [refreshState] 暴露。
+     */
     fun refresh() {
         launch {
             _refreshState.value = Resource.Loading()
@@ -51,8 +54,15 @@ class CourseViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 将编辑结果应用到整个学期的所有周（scope = ALL_WEEKS）。
+     *
+     * @param original 被编辑的原始课程
+     * @param updated  编辑后的课程字段
+     */
     fun updateAllWeeks(original: CourseEntity, updated: CourseEntity) {
         launch {
+            // sourceCourseId 指向被覆盖的源课程：自定义课程取其 baseCourseId，否则回退到自身 id
             val sourceCourseId = if (original.baseCourseId != 0L) original.baseCourseId else original.id
             val toSave = original.copy(
                 name = updated.name,
@@ -74,9 +84,15 @@ class CourseViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 将编辑结果仅应用到指定周（scope = THIS_WEEK），不影响其它周。
+     *
+     * @param week 目标周次，非法周次（<=0）会被忽略
+     */
     fun updateThisWeek(original: CourseEntity, week: Int, updated: CourseEntity) {
         launch {
             if (week <= 0) return@launch
+            // sourceCourseId 指向被覆盖的源课程：自定义课程取其 baseCourseId，否则回退到自身 id
             val sourceCourseId = if (original.baseCourseId != 0L) original.baseCourseId else original.id
             val toSave = original.copy(
                 name = updated.name,
@@ -88,6 +104,7 @@ class CourseViewModel @Inject constructor(
                 weekRange = week.toString(),
                 color = updated.color,
                 isRemote = false,
+                // THIS_WEEK 覆盖：记录被覆盖的基础课程 id，使该周用此自定义课程替换原课程
                 baseCourseId = sourceCourseId,
                 onlyWeek = week
             )
@@ -100,6 +117,9 @@ class CourseViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 新增一门覆盖整个学期的课程（scope = ALL_WEEKS）。
+     */
     fun addAllWeeks(course: CourseEntity) {
         launch {
             val toSave = CourseEntity(
@@ -125,6 +145,11 @@ class CourseViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 新增一门仅出现在指定周的课程（scope = THIS_WEEK）。
+     *
+     * @param week 目标周次，非法周次（<=0）会被忽略
+     */
     fun addThisWeek(week: Int, course: CourseEntity) {
         launch {
             if (week <= 0) return@launch

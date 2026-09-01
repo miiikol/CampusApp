@@ -15,7 +15,7 @@ import com.example.campus.data.local.entity.*
  * - 通过 DAO 对外暴露数据访问能力，UI 层不得直接操作数据库
  *
  * 配置：
- * - version = 1：当前未做迁移脚本；升级版本时应补充 Migration 或调整策略
+ * - version = 6：已有 1→6 的迁移脚本（见下方 MIGRATION_*）；升级版本时需补充对应 Migration
  * - exportSchema = false：若需要数据库版本演进记录，可改为 true 并配置 schemaLocation
  */
 @Database(
@@ -41,6 +41,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun notificationDao(): NotificationDao
 
     companion object {
+        /** 1→2：课程表新增颜色、远端标识、基础课程 id 及单周限制字段 */
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE courses ADD COLUMN color INTEGER NOT NULL DEFAULT -1")
@@ -50,18 +51,21 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** 2→3：用户表新增角色（role）字段 */
         val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'student'")
             }
         }
 
+        /** 3→4：二手商品表新增状态（status）字段 */
         val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE market_items ADD COLUMN status TEXT")
             }
         }
 
+        /** 4→5：新增本地通知表及 (userId, id) 索引 */
         val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -83,6 +87,7 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** 5→6：新增二手收藏表及 (userId, createdAt) 索引 */
         val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(

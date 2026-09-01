@@ -1,33 +1,56 @@
 <?php
 
+/**
+ * 演示数据种子
+ *
+ * 幂等地写入演示用户、课程、资讯与评论，首次完成后写入
+ * app_meta 标记避免重复执行；仅在开发/演示环境加载。
+ */
+
+/**
+ * 确保演示用户存在：不存在则创建，存在则按需补齐资料
+ */
 function ensureDemoUser($studentId, $username, $fullName, $idCardHash, $avatarUrl, $password, $role = 'student') {
   ensureUsersProfileColumns();
+
+  // 为演示用户生成稳定的主键 id（学号派生），避免插入时主键为空，
+  // 否则 JWT 的 sub 为空字符串，后续强制鉴权会一律返回 401
+  $demoId = 'stu-' . $studentId;
 
   $stmt = db()->prepare('SELECT id, password_hash FROM users WHERE student_id = ? LIMIT 1');
   $stmt->execute([$studentId]);
   $row = $stmt->fetch();
 
   if ($row) {
+    $currentId = trim((string)($row['id'] ?? ''));
+    // 历史脏数据修复：早期版本插入未指定 id，主键可能为空字符串
+    if ($currentId === '') {
+      $stmtFix = db()->prepare('UPDATE users SET id = ? WHERE student_id = ?');
+      $stmtFix->execute([$demoId, $studentId]);
+      $currentId = $demoId;
+    }
+
+    // 用户已存在：密码为空则补全，否则仅更新资料（不覆盖已有密码）
     $passwordHash = trim((string)($row['password_hash'] ?? ''));
     if ($passwordHash === '') {
       $stmt2 = db()->prepare('UPDATE users SET username = ?, full_name = ?, id_card_hash = ?, avatar_url = ?, role = ?, password_hash = ? WHERE id = ?');
-      $stmt2->execute([$username, $fullName, $idCardHash, $avatarUrl, $role, password_hash($password, PASSWORD_DEFAULT), $row['id']]);
+      $stmt2->execute([$username, $fullName, $idCardHash, $avatarUrl, $role, password_hash($password, PASSWORD_DEFAULT), $currentId]);
     } else {
       $stmt2 = db()->prepare('UPDATE users SET username = ?, full_name = ?, id_card_hash = ?, avatar_url = ?, role = ? WHERE id = ?');
-      $stmt2->execute([$username, $fullName, $idCardHash, $avatarUrl, $role, $row['id']]);
+      $stmt2->execute([$username, $fullName, $idCardHash, $avatarUrl, $role, $currentId]);
     }
-    return (string)$row['id'];
+    return $currentId;
   }
 
-  $stmt3 = db()->prepare('INSERT INTO users (student_id, username, full_name, id_card_hash, password_hash, role, avatar_url) VALUES (?, ?, ?, ?, ?, ?, ?)');
-  $stmt3->execute([$studentId, $username, $fullName, $idCardHash, password_hash($password, PASSWORD_DEFAULT), $role, $avatarUrl]);
+  $stmt3 = db()->prepare('INSERT INTO users (id, student_id, username, full_name, id_card_hash, password_hash, role, avatar_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+  $stmt3->execute([$demoId, $studentId, $username, $fullName, $idCardHash, password_hash($password, PASSWORD_DEFAULT), $role, $avatarUrl]);
 
-  $stmt4 = db()->prepare('SELECT id FROM users WHERE student_id = ? LIMIT 1');
-  $stmt4->execute([$studentId]);
-  $created = $stmt4->fetch();
-  return $created ? (string)$created['id'] : '';
+  return $demoId;
 }
 
+/**
+ * 批量写入演示学生账号，返回「学号 => 用户信息」映射
+ */
 function ensureDemoUsersSeeded() {
   $students = [
     [
@@ -90,6 +113,9 @@ function ensureDemoUsersSeeded() {
   return $out;
 }
 
+/**
+ * 按 ID 新增或更新一条演示课程
+ */
 function upsertDemoCourse($course) {
   $stmt = db()->prepare('SELECT id FROM courses WHERE id = ? LIMIT 1');
   $stmt->execute([$course['id']]);
@@ -123,6 +149,9 @@ function upsertDemoCourse($course) {
   ]);
 }
 
+/**
+ * 写入演示课程及其选课关联
+ */
 function ensureDemoCoursesSeeded($usersByStudentId) {
   ensureCourseAssignmentsTable();
 
@@ -160,6 +189,7 @@ function ensureDemoCoursesSeeded($usersByStudentId) {
     return (int)$course['id'];
   }, $courses);
 
+  // 先清空演示课程的选课关联，再重新写入，保证重复执行幂等
   if (!empty($demoCourseIds)) {
     $placeholders = implode(',', array_fill(0, count($demoCourseIds), '?'));
     $stmtClear = db()->prepare("DELETE FROM course_assignments WHERE course_id IN ($placeholders)");
@@ -177,6 +207,9 @@ function ensureDemoCoursesSeeded($usersByStudentId) {
   }
 }
 
+/**
+ * 按 ID 新增或更新一条演示资讯
+ */
 function upsertDemoNews($news) {
   $stmt = db()->prepare('SELECT id FROM news WHERE id = ? LIMIT 1');
   $stmt->execute([$news['id']]);
@@ -208,6 +241,9 @@ function upsertDemoNews($news) {
   ]);
 }
 
+/**
+ * 写入演示资讯列表
+ */
 function ensureDemoNewsSeeded() {
   $newsList = [
     [
@@ -262,8 +298,12 @@ function ensureDemoNewsSeeded() {
   }
 }
 
+/**
+ * 为指定资讯写入演示评论（已有评论则跳过）
+ */
 function ensureDemoCommentsForNews($newsId, $comments) {
   ensureNewsCommentsTable();
+  // 已有评论则跳过，避免重复插入
   $stmt = db()->prepare('SELECT COUNT(*) AS cnt FROM news_comments WHERE news_id = ?');
   $stmt->execute([(string)$newsId]);
   $row = $stmt->fetch();
@@ -276,6 +316,7 @@ function ensureDemoCommentsForNews($newsId, $comments) {
     $parentIdValue = null;
     $replyToUserId = null;
     $replyToUsername = null;
+    // 通过 parentKey 关联到本批已插入的父评论
     if (!empty($comment['parentKey']) && isset($inserted[$comment['parentKey']])) {
       $parent = $inserted[$comment['parentKey']];
       $parentIdValue = $parent['id'];
@@ -303,6 +344,9 @@ function ensureDemoCommentsForNews($newsId, $comments) {
   }
 }
 
+/**
+ * 写入演示评论与点赞表结构
+ */
 function ensureDemoNewsCommentsSeeded($usersByStudentId) {
   ensureNewsCommentsTable();
   ensureNewsLikesTables();
@@ -404,8 +448,12 @@ function ensureDemoNewsCommentsSeeded($usersByStudentId) {
   ]);
 }
 
+/**
+ * 初始化演示内容：用元数据标记保证只执行一次
+ */
 function ensureDemoContentSeeded() {
   ensureAppMetaTable();
+  // 通过元数据标记判断是否已执行过，避免重复写入
   $flag = getMetaValue('demo_seeded');
   if ($flag === '1') return;
 

@@ -54,6 +54,7 @@ class NewsViewModel @Inject constructor(
         refresh()
     }
 
+    /** 触发远端刷新，更新刷新状态。 */
     fun refresh() {
         launch {
             _status.value = Resource.Loading()
@@ -85,6 +86,7 @@ class NewsViewModel @Inject constructor(
         }
     }
 
+    /** 重置发布状态，避免重复消费成功/失败提示。 */
     fun clearPublishStatus() {
         _publishStatus.value = null
     }

@@ -77,7 +77,7 @@ class MarketFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        
+        // 初始化列表、注册监听并收集 ViewModel 状态
         setupRecyclerView()
         setupListeners()
         observeViewModel()
@@ -92,7 +92,7 @@ class MarketFragment : Fragment() {
         }
         binding.rvMarket.apply {
             adapter = marketAdapter
-            // Use GridLayoutManager for market items (2 columns)
+            // 使用两列网格布局展示商品
             layoutManager = GridLayoutManager(context, 2)
         }
     }
@@ -104,6 +104,7 @@ class MarketFragment : Fragment() {
     }
 
     private fun showPublishDialog() {
+        // 动态构建发布表单对话框：标题/描述/价格/图片（URL 或相册选择）
         val context = requireContext()
 
         val container = LinearLayout(context).apply {
@@ -225,6 +226,7 @@ class MarketFragment : Fragment() {
                             null -> Unit
                             is Resource.Loading -> Unit
                             is Resource.Error -> {
+                                // 后端将“已提交审核”也走 Error 通道，按文案区分提示类型
                                 val message = status.message ?: "发布失败"
                                 val snackType = if (message.contains("已提交审核")) SnackType.SUCCESS else SnackType.ERROR
                                 showSnack(message, type = snackType)

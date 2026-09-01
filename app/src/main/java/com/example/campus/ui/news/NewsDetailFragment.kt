@@ -50,6 +50,7 @@ class NewsDetailFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        // 初始化评论适配器，点赞/回复/屏蔽事件交由 ViewModel 处理
         commentAdapter = CommentAdapter(
             isAdmin = { viewModel.isAdmin.value },
             onBan = { viewModel.banComment(it.id) },
@@ -59,6 +60,7 @@ class NewsDetailFragment : Fragment() {
         binding.rvComments.layoutManager = LinearLayoutManager(requireContext())
         binding.rvComments.adapter = commentAdapter
 
+        // 返回、点赞、发送评论与取消回复等交互监听
         binding.btnBack.setOnClickListener {
             findNavController().popBackStack()
         }
@@ -66,6 +68,7 @@ class NewsDetailFragment : Fragment() {
             viewModel.toggleNewsLike()
         }
         binding.btnSendComment.setOnClickListener {
+            // 校验评论内容非空后提交
             val content = binding.etComment.text?.toString().orEmpty()
             if (content.isBlank()) {
                 showSnack("评论不能为空", type = SnackType.ERROR)
@@ -82,6 +85,7 @@ class NewsDetailFragment : Fragment() {
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                // 收集资讯详情并渲染标题、日期、正文与封面
                 launch {
                     viewModel.news.collect { news ->
                         if (news == null) {
@@ -108,11 +112,13 @@ class NewsDetailFragment : Fragment() {
                         }
                     }
                 }
+                // 评论列表刷新
                 launch {
                     viewModel.comments.collect { comments ->
                         commentAdapter.submitList(comments)
                     }
                 }
+                // 回复目标状态：控制回复提示栏的显隐与输入框提示语
                 launch {
                     viewModel.replyTarget.collect { target ->
                         if (target == null) {
@@ -126,6 +132,7 @@ class NewsDetailFragment : Fragment() {
                         }
                     }
                 }
+                // 资讯点赞状态：展示点赞数及当前是否已赞
                 launch {
                     viewModel.newsLikeStatus.collect { like ->
                         if (like == null) {
@@ -136,6 +143,7 @@ class NewsDetailFragment : Fragment() {
                         }
                     }
                 }
+                // 加载评论出错时提示
                 launch {
                     viewModel.status.collect { status ->
                         if (status is Resource.Error) {
@@ -143,6 +151,7 @@ class NewsDetailFragment : Fragment() {
                         }
                     }
                 }
+                // 评论/点赞/屏蔽等操作结果：成功清空输入框并提示，失败仅提示
                 launch {
                     viewModel.commentActionStatus.collect { status ->
                         when (status) {

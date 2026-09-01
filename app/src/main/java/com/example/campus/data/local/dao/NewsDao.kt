@@ -22,6 +22,9 @@ interface NewsDao {
     @Query("SELECT * FROM news ORDER BY publishDate DESC")
     fun getAllNews(): Flow<List<NewsEntity>>
 
+    /**
+     * 按 id 查询单条资讯。
+     */
     @Query("SELECT * FROM news WHERE id = :id LIMIT 1")
     fun getNewsById(id: String): Flow<NewsEntity?>
 

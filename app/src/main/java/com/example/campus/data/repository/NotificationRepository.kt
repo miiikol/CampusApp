@@ -41,12 +41,19 @@ class NotificationRepository @Inject constructor(
 
     suspend fun unreadCountNow(userId: String): Int = dao.getUnreadCountNow(userId)
 
+    /**
+     * 增量同步通知：以本地最大通知 ID 作为 sinceId，仅拉取新增通知。
+     *
+     * 成功时将新通知追加到本地缓存；失败时返回 [Resource.Error]，
+     * 不影响已有本地缓存。
+     */
     suspend fun sync(userId: String): Resource<Unit> {
         return try {
             val sinceId = dao.getMaxId(userId) ?: 0L
             val remote = api.getNotifications(userId = userId, sinceId = sinceId, limit = 200)
             if (remote.isNotEmpty()) {
                 val mapped = remote.mapNotNull { n ->
+                    // 过滤掉 id 无法转为数字的脏数据，避免破坏本地主键
                     val idLong = n.id.toLongOrNull() ?: return@mapNotNull null
                     NotificationEntity(
                         id = idLong,
@@ -72,6 +79,12 @@ class NotificationRepository @Inject constructor(
         }
     }
 
+    /**
+     * 一键标记全部已读。
+     *
+     * 先本地标记已读保证 UI 立即生效，再异步通知远端；
+     * 远端同步失败不影响本地已读状态。
+     */
     suspend fun readAll(userId: String): Resource<Unit> {
         return try {
             val unread = dao.getUnreadCountNow(userId)
@@ -81,6 +94,7 @@ class NotificationRepository @Inject constructor(
             try {
                 api.readAllNotifications(ReadAllNotificationsRequest(userId))
             } catch (_: Exception) {
+                // 远端同步失败忽略，保留本地已读状态
             }
             Resource.Success(Unit)
         } catch (e: Exception) {

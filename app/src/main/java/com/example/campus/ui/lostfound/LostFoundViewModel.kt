@@ -41,19 +41,23 @@ class LostFoundViewModel @Inject constructor(
     private val _currentUserId = MutableStateFlow<String?>(null)
 
     init {
+        // 收集本地缓存的失物招领列表
         viewModelScope.launch {
             repository.lostFoundItems.collect {
                 _items.value = it
             }
         }
+        // 缓存当前用户 ID，发布时作为 ownerId 使用
         viewModelScope.launch {
             userRepository.getUser().collect { user ->
                 _currentUserId.value = user?.id
             }
         }
+        // 启动时立即从远端刷新一次
         refresh()
     }
 
+    /** 从远端刷新失物招领列表，结果通过 [status] 暴露给 UI。 */
     fun refresh() {
         launch {
             _status.value = Resource.Loading()
@@ -61,6 +65,7 @@ class LostFoundViewModel @Inject constructor(
         }
     }
 
+    /** 发布一条失物招领记录，含可选位置坐标与图片，提交后经远端审核可见。 */
     fun publish(
         title: String,
         description: String,
@@ -91,6 +96,7 @@ class LostFoundViewModel @Inject constructor(
         }
     }
 
+    /** 重置发布状态，供 UI 消费完一次发布结果后调用。 */
     fun clearPublishStatus() {
         _publishStatus.value = null
     }

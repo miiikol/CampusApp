@@ -18,6 +18,12 @@ class AdminRepository @Inject constructor(
     private val api: ApiService
 ) {
 
+    /**
+     * 获取待审核内容列表。
+     *
+     * @param adminId 管理员用户 ID
+     * @return 成功时为待审核列表，失败时为可读错误消息（不涉及本地缓存）
+     */
     suspend fun getPendingReviews(adminId: String): Resource<List<AdminPendingReviewDto>> {
         return try {
             Resource.Success(api.getPendingReviews(adminId))
@@ -30,6 +36,15 @@ class AdminRepository @Inject constructor(
         }
     }
 
+    /**
+     * 执行审核操作（通过 approve / 驳回 reject）。
+     *
+     * @param adminId 管理员用户 ID
+     * @param itemType 审核内容类型（如 news / market / lost_found）
+     * @param itemId 被审核内容 ID
+     * @param action 审核动作（approve / reject）
+     * @return 成功后端返回消息，失败时为可读错误消息
+     */
     suspend fun reviewItem(
         adminId: String,
         itemType: String,

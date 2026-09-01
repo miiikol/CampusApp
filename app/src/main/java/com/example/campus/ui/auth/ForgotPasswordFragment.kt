@@ -46,12 +46,14 @@ class ForgotPasswordFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // 输入内容变化时清除对应输入框的错误提示
         binding.etStudentId.doAfterTextChanged { binding.tilStudentId.error = null }
         binding.etFullName.doAfterTextChanged { binding.tilFullName.error = null }
         binding.etIdCardNo.doAfterTextChanged { binding.tilIdCardNo.error = null }
         binding.etNewPassword.doAfterTextChanged { binding.tilNewPassword.error = null }
         binding.etConfirmPassword.doAfterTextChanged { binding.tilConfirmPassword.error = null }
 
+        // 收集身份信息与新密码，交由 ViewModel 完成校验与重置
         binding.btnResetPassword.setOnClickListener {
             val studentId = binding.etStudentId.text?.toString().orEmpty().trim()
             val fullName = binding.etFullName.text?.toString().orEmpty().trim()
@@ -65,6 +67,7 @@ class ForgotPasswordFragment : Fragment() {
             findNavController().popBackStack()
         }
 
+        // 观察重置状态流：Loading 禁用表单、Success 提示并返回登录页、Error 恢复并展示错误
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.resetState.collect { state ->

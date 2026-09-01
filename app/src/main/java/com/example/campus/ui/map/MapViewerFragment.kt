@@ -98,6 +98,7 @@ class MapViewerFragment : Fragment() {
     }
 
     private fun setupMap() {
+        // 从导航参数读取目标坐标、标题与地址
         val args = requireArguments()
         val latitude = args.getString("latitude")?.toDoubleOrNull() ?: 0.0
         val longitude = args.getString("longitude")?.toDoubleOrNull() ?: 0.0
@@ -132,6 +133,7 @@ class MapViewerFragment : Fragment() {
         }
 
         tipsJob = viewLifecycleOwner.lifecycleScope.launch {
+            // 延迟 250ms 防抖，避免连续输入时频繁请求
             delay(250)
             if (!isAdded || _binding == null) return@launch
             if (!ensureAmapKeyConfigured()) return@launch

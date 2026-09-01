@@ -44,6 +44,7 @@ class CommentAdapter(
         fun bind(item: CommentDto) {
             binding.tvUser.text = item.username
             binding.tvContent.text = item.content
+            // 加载用户头像，无头像时使用兜底占位图
             if (!item.avatarUrl.isNullOrBlank()) {
                 Glide.with(binding.root.context)
                     .load(item.avatarUrl)
@@ -53,6 +54,7 @@ class CommentAdapter(
             } else {
                 binding.ivAvatar.setImageResource(R.drawable.ic_launcher_foreground)
             }
+            // 二级回复：存在被回复人时展示"回复 @xxx"
             val replyTo = item.replyToUsername?.takeIf { it.isNotBlank() }
             if (replyTo != null) {
                 binding.tvReplyTo.visibility = android.view.View.VISIBLE
@@ -67,10 +69,12 @@ class CommentAdapter(
             binding.btnLike.setOnClickListener { onToggleLike(item) }
             binding.btnReply.setOnClickListener { onReply(item) }
 
+            // 仅管理员可见屏蔽按钮
             val showBan = isAdmin()
             binding.btnBan.visibility = if (showBan) android.view.View.VISIBLE else android.view.View.GONE
             binding.btnBan.setOnClickListener { onBan(item) }
 
+            // 子评论左侧缩进，与父评论形成层级区分
             val density = binding.root.resources.displayMetrics.density
             val indent = if (item.parentCommentId != null) (24 * density).toInt() else 0
             binding.root.updatePadding(left = indent)

@@ -41,6 +41,7 @@ class PublishNewsFragment : Fragment() {
     private var selectedImageUri: String? = null
     private lateinit var newsAdapter: NewsAdapter
 
+    // 选择封面图：持久化读权限并回显预览
     private val pickImage = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@registerForActivityResult
         try {
@@ -72,8 +73,10 @@ class PublishNewsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // 初始化资讯列表预览
         setupNewsList()
 
+        // 选择/移除封面图与发布按钮监听
         binding.btnPickImage.setOnClickListener {
             pickImage.launch(arrayOf("image/*"))
         }
@@ -109,6 +112,7 @@ class PublishNewsFragment : Fragment() {
     private fun observeNews() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                // 收集资讯列表并处理空态
                 viewModel.news.collect { newsList ->
                     newsAdapter.submitList(newsList)
                     binding.tvNewsEmpty.visibility = if (newsList.isEmpty()) View.VISIBLE else View.GONE
@@ -118,6 +122,7 @@ class PublishNewsFragment : Fragment() {
     }
 
     private fun doPublish() {
+        // 读取并校验表单，全部通过后提交发布
         val title = binding.etTitle.text?.toString().orEmpty().trim()
         val type = binding.etType.text?.toString().orEmpty().trim()
         val summary = binding.etSummary.text?.toString().orEmpty().trim()
@@ -157,6 +162,7 @@ class PublishNewsFragment : Fragment() {
     private fun observeStatus() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                // 发布状态：加载中禁用按钮，成功清空表单，失败仅提示
                 viewModel.publishStatus.collect { status ->
                     when (status) {
                         is Resource.Loading -> {

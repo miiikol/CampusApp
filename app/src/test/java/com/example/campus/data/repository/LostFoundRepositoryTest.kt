@@ -16,6 +16,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
 
+/**
+ * 针对 [LostFoundRepository] 刷新逻辑的单元测试：
+ * 验证成功时以远程数据覆盖缓存、失败（IO 异常）时保留原缓存。
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 class LostFoundRepositoryTest {
 
@@ -52,6 +56,7 @@ class LostFoundRepositoryTest {
         val result = repo.refreshItems()
 
         assertTrue(result is Resource.Success)
+        // 刷新成功后缓存被两条远程数据覆盖，并按 publishTime 倒序排列
         val after = dao.snapshot()
         assertEquals(2, after.size)
         assertEquals(listOf("lf2", "lf1"), after.map { it.id })
@@ -74,6 +79,7 @@ class LostFoundRepositoryTest {
         val result = repo.refreshItems()
 
         assertTrue(result is Resource.Error)
+        // 网络异常时返回错误，且本地缓存保持不变
         val after = dao.snapshot()
         assertEquals(1, after.size)
         assertEquals("old", after.single().id)

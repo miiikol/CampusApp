@@ -85,6 +85,7 @@ class CourseScheduleView @JvmOverloads constructor(
     private var onEmptyCellClickListener: OnEmptyCellClickListener? = null
     private var selectedCourseId: Long? = null
 
+    // 渲染缓存：尺寸、周次或课程内容变化时才重建渲染项
     private var cachedWidth = 0
     private var cachedHeight = 0
     private var cachedWeek = -1
@@ -148,6 +149,7 @@ class CourseScheduleView @JvmOverloads constructor(
             canvas.drawText(i.toString(), cellWidth / 2, i * cellHeight + cellHeight / 2 + 10, textPaint)
         }
 
+        // 获取（或按需重建并缓存）本帧的渲染项，避免每次绘制重复计算
         val renderItems = getOrBuildRenderItems(cellWidth, cellHeight)
         renderItems.forEach { item ->
             coursePaint.color = item.backgroundColor
@@ -183,6 +185,7 @@ class CourseScheduleView @JvmOverloads constructor(
 
             val cellWidth = widthF / 8
             val cellHeight = heightF / 13
+            // 先按渲染块做命中测试：点中课程块则选中并回调
             val hit = getOrBuildRenderItems(cellWidth, cellHeight)
                 .firstOrNull { event.x >= it.left && event.x <= it.right && event.y >= it.top && event.y <= it.bottom }
 
@@ -194,6 +197,7 @@ class CourseScheduleView @JvmOverloads constructor(
                 return true
             }
 
+            // 未命中课程块时，按行列坐标换算为星期与节次，用于空白课格点击
             val column = (event.x / cellWidth).toInt()
             val row = (event.y / cellHeight).toInt()
             val day = column
@@ -249,12 +253,14 @@ class CourseScheduleView @JvmOverloads constructor(
         val padding = 6f
         val innerPadding = 3f
 
+        // 收集“本周自定义课程”所覆盖的基础课程 id，后续用于过滤原基础课程
         val overriddenBaseIds = courses
             .asSequence()
             .filter { it.onlyWeek == currentWeek && it.baseCourseId != 0L }
             .map { it.baseCourseId }
             .toSet()
 
+        // 仅保留落在合法课格内、且本周有课（周次包含当前周）的课程
         val filtered = courses
             .asSequence()
             .filter { course ->
@@ -267,6 +273,7 @@ class CourseScheduleView @JvmOverloads constructor(
                     end >= start &&
                     weekRangeContains(course.weekRange, currentWeek)
             }
+            // 被本周自定义课程覆盖的基础课程不再展示
             .filter { course ->
                 !(course.onlyWeek == 0 && course.baseCourseId == 0L && course.id in overriddenBaseIds)
             }
@@ -275,15 +282,18 @@ class CourseScheduleView @JvmOverloads constructor(
         val itemsByDay = filtered.groupBy { it.dayOfWeek }
         val renderItems = ArrayList<RenderItem>(filtered.size)
 
+        // 逐天计算：同一天内时间重叠的课程按“列”并排展示
         for (day in 1..7) {
             val dayCourses = itemsByDay[day].orEmpty()
             if (dayCourses.isEmpty()) continue
 
+            // 按开始节次排序，便于用扫描线确定重叠列
             val sorted = dayCourses.sortedWith(compareBy<CourseEntity>({ it.startSection }, { it.endSection }, { it.name }))
             val active = ArrayList<TempItem>()
             val componentItems = ArrayList<TempItem>()
             var componentMaxConcurrent = 0
 
+            // 结束一个“重叠连通分量”，把期间最大并发列数回写到该分量内的各课程
             fun finalizeComponent() {
                 if (componentItems.isEmpty()) return
                 val columns = max(1, componentMaxConcurrent)
@@ -297,11 +307,13 @@ class CourseScheduleView @JvmOverloads constructor(
                 val start = course.startSection
                 val end = course.endSection
 
+                // 移除已结束的课程；无重叠时收尾上一个连通分量
                 active.removeAll { it.end < start }
                 if (active.isEmpty()) {
                     finalizeComponent()
                 }
 
+                // 找到当前重叠集合中第一个未被占用的列
                 val maxCol = active.maxOfOrNull { it.columnIndex } ?: -1
                 val used = BooleanArray(maxCol + 8)
                 active.forEach { item ->
@@ -327,6 +339,7 @@ class CourseScheduleView @JvmOverloads constructor(
             }
             finalizeComponent()
 
+            // 由课格坐标换算像素矩形：按重叠列数均分当天列宽
             tempItems.forEach { temp ->
                 val dayLeft = day * cellWidth + padding
                 val dayRight = (day + 1) * cellWidth - padding
@@ -337,6 +350,7 @@ class CourseScheduleView @JvmOverloads constructor(
                 val left = dayLeft + temp.columnIndex * colWidth + innerPadding
                 val right = dayLeft + (temp.columnIndex + 1) * colWidth - innerPadding
 
+                // 纵向以 start/end 节次为界：第 1 节对应 cellHeight 顶部
                 val top = temp.start * cellHeight + padding
                 val bottom = (temp.end + 1) * cellHeight - padding
 
@@ -381,6 +395,7 @@ class CourseScheduleView @JvmOverloads constructor(
         val drawLines = lines.take(maxLines)
 
         val totalTextHeight = drawLines.size * lineHeight
+        // 垂直居中：用剩余高度的一半作为顶部留白，再按 ascent 偏移到文本基线
         var y = top + (bottom - top - totalTextHeight) / 2f - fm.ascent
         val centerX = (left + right) / 2f
 
@@ -393,6 +408,7 @@ class CourseScheduleView @JvmOverloads constructor(
 
     private fun ellipsize(text: String, maxWidth: Float, paint: Paint): String {
         if (paint.measureText(text) <= maxWidth) return text
+        // 超宽时逐字缩减并追加省略号，直到文本宽度适配可用空间
         val ellipsis = "…"
         val ellipsisWidth = paint.measureText(ellipsis)
         if (ellipsisWidth >= maxWidth) return ellipsis
@@ -408,6 +424,7 @@ class CourseScheduleView @JvmOverloads constructor(
 
     private fun colorForCourse(course: CourseEntity): Int {
         if (course.color != -1) return course.color
+        // 未指定颜色时，依据课程名称/教师/地点哈希从调色板稳定取色
         val palette = intArrayOf(
             Color.parseColor("#3F51B5"),
             Color.parseColor("#009688"),
@@ -423,6 +440,7 @@ class CourseScheduleView @JvmOverloads constructor(
         return palette[idx]
     }
 
+    // 计算课程字段的组合哈希，用于判断渲染缓存是否需要失效重建
     private fun List<CourseEntity>.contentHashForRender(): Int {
         var result = 1
         for (c in this) {
@@ -442,6 +460,10 @@ class CourseScheduleView @JvmOverloads constructor(
     }
 
     companion object {
+        /**
+         * 判断课程在指定周是否上课：支持 1-16、1,3,5、单周/双周 等写法；
+         * 无法解析出任何区间时视为全程有效。
+         */
         fun weekRangeContains(weekRange: String, week: Int): Boolean {
             if (week <= 0) return false
             val parsed = parseWeekRanges(weekRange)
@@ -451,6 +473,7 @@ class CourseScheduleView @JvmOverloads constructor(
             return parsed.ranges.any { week in it }
         }
 
+        /** 返回周次描述中的最大周数，用于计算学期总周数（无法解析时返回 null）。 */
         fun weekRangeMax(weekRange: String): Int? {
             val parsed = parseWeekRanges(weekRange)
             return parsed.ranges.maxOfOrNull { it.last }
@@ -461,6 +484,7 @@ class CourseScheduleView @JvmOverloads constructor(
         private data class ParsedWeekRanges(val ranges: List<IntRange>, val parity: Parity?)
 
         private fun parseWeekRanges(raw: String): ParsedWeekRanges {
+            // 统一去掉“周”字与空白，便于后续匹配数字与“单/双”
             val normalized = raw
                 .replace("周", "")
                 .replace(" ", "")

@@ -60,14 +60,23 @@ class MarketRepository @Inject constructor(
 
     fun favoriteItems(userId: String): Flow<List<MarketEntity>> = dao.getFavoriteItems(userId)
 
+    /**
+     * 刷新商品列表与当前用户的收藏关系，并覆盖本地缓存。
+     *
+     * 先插入全部商品，再清空并重建该用户的收藏记录，
+     * 避免远端已取消的收藏在本地残留。
+     */
     suspend fun refreshItems(): Resource<Unit> {
         return try {
             val currentUser = userDao.getCurrentUser()
             val currentUserId = currentUser?.id?.takeIf { it.isNotBlank() }
             val remoteItems = api.getMarketItems(currentUserId).data
             val remoteEntities = remoteItems.map { it.toEntity(isFavorite = false) }
+            // 先清空旧缓存再插入，避免远端已下架的商品残留在本地
+            dao.clearItems()
             dao.insertItems(remoteEntities)
             if (!currentUserId.isNullOrBlank()) {
+                // 收藏表按用户全量重建，保证与远端一致
                 favoriteDao.clearUserFavorites(currentUserId)
                 val favorites = remoteItems
                     .filter { it.isFavorite }
@@ -92,7 +101,13 @@ class MarketRepository @Inject constructor(
         }
     }
 
-    suspend fun toggleFavorite(userId: String, itemId: String, isFavorite: Boolean) {
+    /**
+     * 切换商品收藏状态，本地与远端双向同步。
+     *
+     * @param userId 当前用户 ID
+     * @param itemId 商品 ID
+     */
+    suspend fun toggleFavorite(userId: String, itemId: String) {
         if (userId.isBlank() || itemId.isBlank()) return
         val response = api.toggleMarketFavorite(itemId, FavoriteToggleRequest(userId))
         if (response.favorited) {
@@ -104,13 +119,20 @@ class MarketRepository @Inject constructor(
                 )
             )
         } else {
+            // 收藏标记由收藏表控制，删除收藏行即可；isFavorite 字段由列表查询动态计算，无需写商品表
             favoriteDao.deleteFavorite(userId, itemId)
-            dao.updateStatus(itemId, null)
         }
     }
 
+    /**
+     * 发布二手商品。
+     *
+     * 图片为本地路径时先上传换取远端 URL 再提交；
+     * 后端返回 APPROVED 才写入本地缓存，否则视为待审核。
+     */
     suspend fun publishItem(item: MarketDto): Resource<MarketEntity> {
         return try {
+            // 本地图片（content/file 协议）需先上传，远端 URL 直接复用
             val finalItem = if (item.imageUrl?.startsWith("content://", ignoreCase = true) == true ||
                 item.imageUrl?.startsWith("file://", ignoreCase = true) == true
             ) {
@@ -132,6 +154,8 @@ class MarketRepository @Inject constructor(
             Resource.Error(toHttpErrorMessage(e))
         } catch (e: IOException) {
             Resource.Error("无法连接服务器，请确认 WampServer 已启动，且模拟器可访问 10.0.2.2")
+        } catch (e: Exception) {
+            Resource.Error(e.localizedMessage?.takeIf { it.isNotBlank() } ?: "发布失败")
         }
     }
 

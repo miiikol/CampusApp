@@ -46,6 +46,7 @@ class MarketAdapter(private val onItemClick: (MarketEntity) -> Unit) :
             binding.tvPrice.text = NumberFormat.getCurrencyInstance(Locale.CHINA).format(item.price)
             binding.tvSeller.text = "卖家: ${item.sellerId}"
 
+            // 后端状态码映射为中文文案，无特殊状态时隐藏状态标签
             val statusText = when (item.status?.uppercase(Locale.getDefault())) {
                 "OFFLINE" -> "已下架"
                 "SOLD" -> "已售"
@@ -61,6 +62,7 @@ class MarketAdapter(private val onItemClick: (MarketEntity) -> Unit) :
                 binding.tvStatus.text = statusText
             }
 
+            // 有图用 Glide 加载，无图则显示占位图
             if (!item.imageUrl.isNullOrEmpty()) {
                 Glide.with(binding.root.context)
                     .load(item.imageUrl)
@@ -71,6 +73,7 @@ class MarketAdapter(private val onItemClick: (MarketEntity) -> Unit) :
                 binding.ivMarketImage.setImageResource(R.drawable.ic_launcher_foreground)
             }
 
+            // 点击条目上抛回调，由页面跳转到详情页
             binding.root.setOnClickListener {
                 onItemClick(item)
             }

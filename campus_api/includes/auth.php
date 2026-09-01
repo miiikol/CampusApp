@@ -7,6 +7,9 @@
  * authenticateOptional()- Token 可选，有则解析，无则返回 null
  */
 
+/**
+ * 从请求头提取 Bearer Token，未携带则返回 null
+ */
 function extractBearerToken(): ?string {
   $header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
   if ($header === '') {

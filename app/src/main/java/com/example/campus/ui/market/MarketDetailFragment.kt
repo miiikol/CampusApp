@@ -58,6 +58,7 @@ class MarketDetailFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.item.collect { item ->
+                    // 商品不存在时展示占位信息
                     if (item == null) {
                         binding.tvTitle.text = "未找到商品"
                         binding.tvPrice.text = ""
@@ -76,6 +77,7 @@ class MarketDetailFragment : Fragment() {
                     binding.tvDescription.text = item.description
                     binding.btnFavorite.text = if (item.isFavorite) "取消收藏" else "收藏"
 
+                    // 有图用 Glide 加载，无图则显示占位图
                     if (!item.imageUrl.isNullOrBlank()) {
                         Glide.with(binding.root.context)
                             .load(item.imageUrl)

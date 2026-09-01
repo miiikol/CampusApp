@@ -91,6 +91,7 @@ class ProfileFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        // 收藏列表点击跳转到对应商品详情
         favoriteAdapter = MarketAdapter { item ->
             findNavController().navigate(
                 R.id.marketDetailFragment,
@@ -104,6 +105,7 @@ class ProfileFragment : Fragment() {
         binding.rvNotifications.layoutManager = LinearLayoutManager(requireContext())
         binding.rvNotifications.adapter = notificationAdapter
 
+        // 分别订阅用户信息、收藏列表与通知列表
         observeUser()
         observeFavorites()
         observeNotifications()
@@ -120,6 +122,7 @@ class ProfileFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 userRepository.getUser().collect { user ->
+                    // 未登录时展示占位信息
                     if (user == null) {
                         currentUserId = null
                         binding.tvUsername.text = getString(R.string.profile_username_empty)
@@ -129,6 +132,7 @@ class ProfileFragment : Fragment() {
                         return@collect
                     }
                     currentUserId = user.id
+                    // 角色归一化后映射为管理员/学生文案
                     val roleText = if (normalizeRole(user.role) == UserRole.ADMIN) {
                         getString(R.string.role_admin)
                     } else {
@@ -162,6 +166,7 @@ class ProfileFragment : Fragment() {
                         favoriteAdapter.submitList(emptyList())
                         return@collectLatest
                     }
+                    // 先刷新商品数据，再订阅当前用户的收藏列表
                     marketRepository.refreshItems()
                     marketRepository.favoriteItems(uid).collect { favorites ->
                         favoriteAdapter.submitList(favorites)
@@ -180,6 +185,7 @@ class ProfileFragment : Fragment() {
                         notificationAdapter.submitList(emptyList())
                         return@collectLatest
                     }
+                    // 先同步通知再订阅本地通知列表
                     notificationRepository.sync(uid)
                     notificationRepository.notifications(uid).collect { list ->
                         notificationAdapter.submitList(list)
@@ -214,6 +220,7 @@ class ProfileFragment : Fragment() {
     private fun markAllRead() {
         val uid = currentUserId ?: return
         viewLifecycleOwner.lifecycleScope.launch {
+            // 无未读消息时直接提示，避免无效请求
             val unread = notificationRepository.unreadCountNow(uid)
             if (unread <= 0) {
                 showSnack("暂无未读消息", type = SnackType.SUCCESS)

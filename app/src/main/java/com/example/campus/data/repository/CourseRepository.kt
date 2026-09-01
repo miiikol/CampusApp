@@ -67,9 +67,20 @@ class CourseRepository @Inject constructor(
             Resource.Error(toHttpErrorMessage(e))
         } catch (e: IOException) {
             Resource.Error("无法连接服务器，请确认 WampServer 已启动，且模拟器可访问 10.0.2.2")
+        } catch (e: Exception) {
+            Resource.Error(e.localizedMessage?.takeIf { it.isNotBlank() } ?: "课表加载失败")
         }
     }
 
+    /**
+     * 自定义课表：新增、修改或删除单节课程，成功后重新拉取并覆盖本地缓存。
+     *
+     * @param sourceCourseId 源课程 ID，新增时为 null
+     * @param scope 作用范围（ALL_WEEKS 整学期 / THIS_WEEK 仅本周）
+     * @param week 目标周次，scope 为 THIS_WEEK 时传入
+     * @param course 待保存的课程实体
+     * @return 成功后本地缓存已刷新，失败时为可读错误消息
+     */
     suspend fun customizeCourse(
         sourceCourseId: Long?,
         scope: String,

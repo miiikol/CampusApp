@@ -44,6 +44,7 @@ class MarketViewModel @Inject constructor(
     private val _currentUserId = MutableStateFlow<String?>(null)
 
     init {
+        // 监听当前用户，用户切换时自动切换到其名下的商品数据源
         viewModelScope.launch {
             userRepository.getUser()
                 .map { it?.id }
@@ -54,9 +55,11 @@ class MarketViewModel @Inject constructor(
                 }
                 .collect { _items.value = it }
         }
+        // 启动时立即从远端刷新一次
         refresh()
     }
 
+    /** 从远端刷新商品列表，结果通过 [status] 暴露给 UI。 */
     fun refresh() {
         launch {
             _status.value = Resource.Loading()
@@ -64,6 +67,7 @@ class MarketViewModel @Inject constructor(
         }
     }
 
+    /** 发布一条二手商品：生成唯一 ID，并以当前用户作为卖家提交远端。 */
     fun publish(
         title: String,
         description: String,
@@ -86,6 +90,7 @@ class MarketViewModel @Inject constructor(
         }
     }
 
+    /** 重置发布状态，供 UI 消费完一次发布结果后调用。 */
     fun clearPublishStatus() {
         _publishStatus.value = null
     }

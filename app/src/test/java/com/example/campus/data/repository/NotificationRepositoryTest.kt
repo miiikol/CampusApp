@@ -15,6 +15,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+/**
+ * 针对 [NotificationRepository] 的单元测试：
+ * 验证同步时仅新增新通知、标记全部已读两个场景。
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 class NotificationRepositoryTest {
 
@@ -23,6 +27,7 @@ class NotificationRepositoryTest {
         val dao = FakeNotificationDao()
         val api = mockk<ApiService>(relaxed = true)
 
+        // 从 maxId=0 开始拉取，模拟首次同步
         coEvery { api.getNotifications("u1", 0L, 200) } returns listOf(
             NotificationDto(
                 id = "101", userId = "u1", type = "REVIEW", title = "T1",
@@ -38,6 +43,7 @@ class NotificationRepositoryTest {
         val result = repo.sync("u1")
 
         assertTrue(result is Resource.Success)
+        // 校验两条远程通知均被插入本地
         val notifications = dao.snapshot().filter { it.userId == "u1" }
         assertEquals(2, notifications.size)
         assertEquals(listOf(101L, 102L), notifications.map { it.id }.sorted())
@@ -66,6 +72,7 @@ class NotificationRepositoryTest {
         val result = repo.readAll("u1")
 
         assertTrue(result is Resource.Success)
+        // 校验该用户的未读通知已全部置为已读
         val unreadCount = dao.getUnreadCountNow("u1")
         assertEquals(0, unreadCount)
     }

@@ -1,5 +1,15 @@
 <?php
 
+/**
+ * 数据库表结构与通用数据操作
+ *
+ * 提供幂等的建表函数（IF NOT EXISTS），以及通知、应用元数据、
+ * 课程自定义等读写封装，供各业务模块复用。
+ */
+
+/**
+ * 确保资讯评论表存在，并补齐历史版本缺失的列
+ */
 function ensureNewsCommentsTable() {
   db()->exec("
     CREATE TABLE IF NOT EXISTS news_comments (
@@ -22,11 +32,15 @@ function ensureNewsCommentsTable() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   ");
 
+  // 兼容旧表：补充可能缺失的列（列已存在则忽略异常）
   try { db()->exec("ALTER TABLE news_comments ADD COLUMN parent_comment_id BIGINT NULL"); } catch (Exception $e) { logError('migration: news_comments.parent_comment_id', $e); }
   try { db()->exec("ALTER TABLE news_comments ADD COLUMN reply_to_user_id VARCHAR(64) NULL"); } catch (Exception $e) { logError('migration: news_comments.reply_to_user_id', $e); }
   try { db()->exec("ALTER TABLE news_comments ADD COLUMN reply_to_username VARCHAR(100) NULL"); } catch (Exception $e) { logError('migration: news_comments.reply_to_username', $e); }
 }
 
+/**
+ * 确保资讯点赞、评论点赞表存在
+ */
 function ensureNewsLikesTables() {
   db()->exec("
     CREATE TABLE IF NOT EXISTS news_likes (
@@ -48,6 +62,9 @@ function ensureNewsLikesTables() {
   ");
 }
 
+/**
+ * 确保资讯、二手市场收藏表存在
+ */
 function ensureFavoritesTables() {
   db()->exec("
     CREATE TABLE IF NOT EXISTS news_favorites (
@@ -69,6 +86,9 @@ function ensureFavoritesTables() {
   ");
 }
 
+/**
+ * 确保通知表存在
+ */
 function ensureNotificationsTable() {
   db()->exec("
     CREATE TABLE IF NOT EXISTS notifications (
@@ -87,6 +107,9 @@ function ensureNotificationsTable() {
   ");
 }
 
+/**
+ * 向指定用户写入一条通知（自动确保表存在，空用户则忽略）
+ */
 function notifyUser($userId, $type, $title, $content, $relatedType = null, $relatedId = null) {
   ensureNotificationsTable();
   $uid = trim((string)$userId);
@@ -95,6 +118,9 @@ function notifyUser($userId, $type, $title, $content, $relatedType = null, $rela
   $stmt->execute([$uid, $type, $title, $content, $relatedType, $relatedId, now_ms()]);
 }
 
+/**
+ * 确保应用元数据表（键值对）存在
+ */
 function ensureAppMetaTable() {
   db()->exec("
     CREATE TABLE IF NOT EXISTS app_meta (
@@ -105,6 +131,9 @@ function ensureAppMetaTable() {
   ");
 }
 
+/**
+ * 读取应用元数据，不存在返回 null
+ */
 function getMetaValue($key) {
   ensureAppMetaTable();
   $k = trim((string)$key);
@@ -115,6 +144,9 @@ function getMetaValue($key) {
   return $row ? (string)$row['v'] : null;
 }
 
+/**
+ * 写入应用元数据（存在则更新，不存在则插入）
+ */
 function setMetaValue($key, $value) {
   ensureAppMetaTable();
   $k = trim((string)$key);
@@ -128,11 +160,17 @@ function setMetaValue($key, $value) {
   $stmt->execute([$k, $v, now_ms()]);
 }
 
+/**
+ * 确保用户表存在资料相关列（列已存在则忽略）
+ */
 function ensureUsersProfileColumns() {
   try { db()->exec("ALTER TABLE users ADD COLUMN full_name VARCHAR(100) NULL"); } catch (Exception $e) { logError('migration: users.full_name', $e); }
   try { db()->exec("ALTER TABLE users ADD COLUMN id_card_hash VARCHAR(64) NULL"); } catch (Exception $e) { logError('migration: users.id_card_hash', $e); }
 }
 
+/**
+ * 确保课程选课关联表存在
+ */
 function ensureCourseAssignmentsTable() {
   db()->exec("
     CREATE TABLE IF NOT EXISTS course_assignments (
@@ -145,6 +183,9 @@ function ensureCourseAssignmentsTable() {
   ");
 }
 
+/**
+ * 确保用户自定义课程表存在
+ */
 function ensureUserCourseCustomizationsTable() {
   db()->exec("
     CREATE TABLE IF NOT EXISTS user_course_customizations (

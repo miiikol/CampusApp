@@ -21,6 +21,10 @@ import org.junit.Rule
 import org.junit.Test
 import java.io.IOException
 
+/**
+ * 针对 [NewsViewModel] 初始化流程的单元测试：
+ * 验证初始化成功时刷新新闻与状态、失败时保留缓存并置为错误状态。
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 class NewsViewModelTest {
 
@@ -65,8 +69,10 @@ class NewsViewModelTest {
 
         val vm = NewsViewModel(repository = repo)
 
+        // 推进测试调度器，等待初始化协程完成刷新
         advanceUntilIdle()
 
+        // 缓存被远程数据覆盖，状态置为成功
         assertEquals(listOf("n1"), vm.news.value.map { it.id })
         assertTrue(vm.status.value is Resource.Success)
     }
@@ -96,6 +102,7 @@ class NewsViewModelTest {
 
         advanceUntilIdle()
 
+        // 失败时保留旧缓存，状态置为错误
         assertEquals(listOf("old"), vm.news.value.map { it.id })
         assertTrue(vm.status.value is Resource.Error)
     }

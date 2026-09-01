@@ -45,6 +45,11 @@ class LostFoundRepository @Inject constructor(
 
     val lostFoundItems: Flow<List<LostFoundEntity>> = dao.getAllItems()
 
+    /**
+     * 从远端刷新失物招领列表并覆盖本地缓存。
+     *
+     * 失败时返回 [Resource.Error]，保留现有本地缓存不变。
+     */
     suspend fun refreshItems(): Resource<Unit> {
         return try {
             val remoteItems = api.getLostFoundItems().data
@@ -60,8 +65,15 @@ class LostFoundRepository @Inject constructor(
         }
     }
 
+    /**
+     * 发布失物招领信息。
+     *
+     * 图片为本地路径时先上传换取远端 URL，再提交；
+     * 后端返回 APPROVED 才写入本地缓存，否则视为待审核。
+     */
     suspend fun publishItem(item: LostFoundDto): Resource<LostFoundEntity> {
         return try {
+            // 本地图片（content/file 协议）需先上传，远端 URL 直接复用
             val finalItem = if (item.imageUrl?.startsWith("content://", ignoreCase = true) == true ||
                 item.imageUrl?.startsWith("file://", ignoreCase = true) == true
             ) {
@@ -73,6 +85,7 @@ class LostFoundRepository @Inject constructor(
 
             val response = api.publishLostFoundItem(finalItem)
             if (response.status.equals("APPROVED", ignoreCase = true)) {
+                // 审核通过才入库；否则仅提示待审核，不污染列表缓存
                 dao.insertItems(listOf(response.toEntity()))
                 Resource.Success(response.toEntity())
             } else {
@@ -82,6 +95,8 @@ class LostFoundRepository @Inject constructor(
             Resource.Error(toHttpErrorMessage(e))
         } catch (e: IOException) {
             Resource.Error("无法连接服务器，请确认 WampServer 已启动，且模拟器可访问 10.0.2.2")
+        } catch (e: Exception) {
+            Resource.Error(e.localizedMessage?.takeIf { it.isNotBlank() } ?: "发布失败")
         }
     }
 

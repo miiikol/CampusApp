@@ -23,6 +23,7 @@ interface UserDao {
     @Query("SELECT * FROM users LIMIT 1")
     fun getUser(): Flow<UserEntity?>
 
+    /** 一次性获取当前用户（挂起函数，未登录时为 null）。 */
     @Query("SELECT * FROM users LIMIT 1")
     suspend fun getCurrentUser(): UserEntity?
 
@@ -32,9 +33,11 @@ interface UserDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUser(user: UserEntity)
 
+    /** 更新用户昵称。 */
     @Query("UPDATE users SET username = :username WHERE id = :id")
     suspend fun updateUsername(id: String, username: String)
 
+    /** 更新用户头像地址。 */
     @Query("UPDATE users SET avatarUrl = :avatarUrl WHERE id = :id")
     suspend fun updateAvatar(id: String, avatarUrl: String?)
 

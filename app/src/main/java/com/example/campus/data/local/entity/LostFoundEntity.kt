@@ -22,7 +22,7 @@ data class LostFoundEntity(
     val title: String,
     val description: String,
     val location: String,
-    val type: String, // "LOST" or "FOUND"
+    val type: String, // "LOST"（丢失）或 "FOUND"（拾到）
     val imageUrl: String?,
     val contactInfo: String?,
     val publishTime: Long,

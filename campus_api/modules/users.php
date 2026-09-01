@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * 用户模块：个人资料修改
+ */
+
+// 修改资料：仅允许本人修改昵称/头像
 if ($method === 'POST' && preg_match('#^/users/([^/]+)/profile$#', $path, $matches)) {
   $routeUserId = (string)$matches[1];
 
@@ -28,6 +33,7 @@ if ($method === 'POST' && preg_match('#^/users/([^/]+)/profile$#', $path, $match
     respond(404, ['message' => '用户不存在']);
   }
 
+  // 仅更新请求中出现的字段，动态拼装 UPDATE 语句
   $updates = [];
   $params = [];
   if ($hasUsername) {

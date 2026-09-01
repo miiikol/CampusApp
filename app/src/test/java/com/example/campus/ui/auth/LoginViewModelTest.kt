@@ -17,6 +17,10 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
+/**
+ * 针对 [LoginViewModel] 登录流程的单元测试：
+ * 验证空输入立即返回错误、成功与失败时状态流的更新。
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 class LoginViewModelTest {
 
@@ -29,6 +33,7 @@ class LoginViewModelTest {
 
     @Before
     fun setUp() {
+        // 每个测试前重建 ViewModel，保证状态隔离
         viewModel = LoginViewModel(repository)
     }
 
@@ -58,12 +63,14 @@ class LoginViewModelTest {
             id = "u1", username = "张三", studentId = "student01",
             avatarUrl = null, token = "token123", role = "student"
         )
+        // 模拟先发 Loading 再发 Success 的登录流
         every { repository.login("student01", "pass123") } returns flow {
             emit(Resource.Loading())
             emit(Resource.Success(user))
         }
 
         viewModel.login("student01", "pass123")
+        // 推进测试调度器，等待协程中的状态更新完成
         advanceUntilIdle()
 
         val state = viewModel.loginState.value
@@ -79,6 +86,7 @@ class LoginViewModelTest {
         )
 
         viewModel.login("student01", "wrong")
+        // 推进测试调度器，等待状态流更新为错误
         advanceUntilIdle()
 
         val state = viewModel.loginState.value

@@ -71,9 +71,13 @@ class MapPickerFragment : Fragment() {
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) {
-        // If granted, enable my-location
-        enableMyLocationIfPermitted()
+    ) { result ->
+        // 仅当用户授权后才启用定位；被拒绝时不再自动重复请求，避免无限弹窗循环
+        if (result.values.any { it }) {
+            enableMyLocationIfPermitted()
+        } else {
+            showSnack("未授予定位权限，无法定位到当前位置", type = SnackType.ERROR)
+        }
     }
 
     override fun onCreateView(
@@ -133,7 +137,7 @@ class MapPickerFragment : Fragment() {
             true
         }
 
-        // Try to enable location
+        // 尝试启用定位
         enableMyLocationIfPermitted()
     }
 
@@ -163,6 +167,7 @@ class MapPickerFragment : Fragment() {
         binding.etKeyword.doOnTextChanged { text, _, _, _ ->
             val keyword = text?.toString()?.trim().orEmpty()
             binding.btnSearch.isEnabled = keyword.isNotEmpty()
+            // 输入即触发联想提示（内部做了防抖）
             requestInputTips(keyword)
         }
         binding.btnSearch.setOnClickListener {
@@ -270,6 +275,7 @@ class MapPickerFragment : Fragment() {
         }
 
         tipsJob = viewLifecycleOwner.lifecycleScope.launch {
+            // 延迟 250ms 防抖，避免连续输入时频繁请求
             delay(250)
             if (!isAdded || _binding == null) return@launch
             if (!ensureAmapKeyConfigured()) return@launch

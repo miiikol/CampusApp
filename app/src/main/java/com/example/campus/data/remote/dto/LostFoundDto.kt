@@ -18,7 +18,7 @@ data class LostFoundDto(
     val publishTime: Long,
     val latitude: Double?,
     val longitude: Double?,
-    val status: String? = null
+    val status: String? = null // 审核状态，如 pending / approved / rejected
 )
 
 /** 将网络 DTO 转换为 Room 实体 */

@@ -72,23 +72,35 @@ function rateLimitDb(string $ip, string $key, int $maxAttempts, int $windowSec):
 
   $pdo = db();
 
-  // 清理过期记录
-  $stmt = $pdo->prepare("DELETE FROM rate_limits WHERE ip = ? AND `key` = ? AND hit_at < ?");
-  $stmt->execute([$ip, $key, $windowStart]);
+  // 用事务包裹“清理-计数-插入”，降低并发绕过风险；限流故障时放行避免阻塞业务
+  $pdo->beginTransaction();
+  try {
+    // 清理所有过期记录（不限定 key），避免 rate_limits 表无限膨胀
+    $stmt = $pdo->prepare("DELETE FROM rate_limits WHERE hit_at < ?");
+    $stmt->execute([$windowStart]);
 
-  // 统计窗口内请求数
-  $stmt = $pdo->prepare("SELECT COUNT(*) AS cnt FROM rate_limits WHERE ip = ? AND `key` = ? AND hit_at >= ?");
-  $stmt->execute([$ip, $key, $windowStart]);
-  $row = $stmt->fetch();
-  $count = (int)($row['cnt'] ?? 0);
+    // 统计窗口内请求数
+    $stmt = $pdo->prepare("SELECT COUNT(*) AS cnt FROM rate_limits WHERE ip = ? AND `key` = ? AND hit_at >= ?");
+    $stmt->execute([$ip, $key, $windowStart]);
+    $row = $stmt->fetch();
+    $count = (int)($row['cnt'] ?? 0);
 
-  if ($count >= $maxAttempts) {
-    return false;
+    if ($count >= $maxAttempts) {
+      $pdo->commit();
+      return false;
+    }
+
+    // 记录本次请求
+    $stmt = $pdo->prepare("INSERT INTO rate_limits (ip, `key`, hit_at) VALUES (?, ?, ?)");
+    $stmt->execute([$ip, $key, $now]);
+
+    $pdo->commit();
+    return true;
+  } catch (Exception $e) {
+    if ($pdo->inTransaction()) {
+      $pdo->rollBack();
+    }
+    logError('rate_limit db', $e);
+    return true;
   }
-
-  // 记录本次请求
-  $stmt = $pdo->prepare("INSERT INTO rate_limits (ip, `key`, hit_at) VALUES (?, ?, ?)");
-  $stmt->execute([$ip, $key, $now]);
-
-  return true;
 }

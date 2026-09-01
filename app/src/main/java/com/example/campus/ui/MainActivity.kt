@@ -53,17 +53,25 @@ class MainActivity : AppCompatActivity() {
         val navController = navHostFragment.navController
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_nav)
 
+        // 目标页变化时，控制底部导航栏显隐（登录页/详情页隐藏）
         navController.addOnDestinationChangedListener { _, destination, _ ->
             updateBottomNavVisibility(bottomNav, destination.id)
         }
+        // 导航联动只绑定一次，避免角色切换反复 inflateMenu 导致监听器累积
+        bottomNav.setupWithNavController(navController)
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 userRepository.getUser().collectLatest { user ->
+                    // 未登录：清空菜单并跳转登录页
                     if (user == null) {
                         currentRoleMenu = null
                         bottomNav.menu.clear()
-                        bottomNav.removeBadge(R.id.nav_profile)
+                        try {
+                            bottomNav.removeBadge(R.id.nav_profile)
+                        } catch (_: Exception) {
+                            // 菜单项不存在时移除角标可能抛异常，忽略即可
+                        }
                         updateBottomNavVisibility(bottomNav, navController.currentDestination?.id)
                         if (navController.currentDestination?.id != R.id.loginFragment) {
                             navController.navigate(
@@ -78,11 +86,13 @@ class MainActivity : AppCompatActivity() {
                         return@collectLatest
                     }
 
+                    // 已登录：按角色切换底部菜单
                     val role = normalizeRole(user.role)
                     applyRoleMenu(role, bottomNav, navController)
 
                     coroutineScope {
                         val uid = user.id
+                        // 定时同步通知（异常静默忽略，避免中断循环）
                         launch {
                             while (isActive) {
                                 try {
@@ -92,6 +102,7 @@ class MainActivity : AppCompatActivity() {
                                 delay(20_000)
                             }
                         }
+                        // 未读通知数实时更新到"我的"角标，最多显示 99
                         launch {
                             notificationRepository.unreadCount(uid).collectLatest { count ->
                                 val c = count.coerceAtLeast(0)
@@ -113,10 +124,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** 按角色加载对应菜单，若当前页不在新菜单中则跳转到角色默认首页。 */
     private fun applyRoleMenu(role: String, bottomNav: BottomNavigationView, navController: NavController) {
         if (currentRoleMenu == role && bottomNav.menu.size() > 0) return
         currentRoleMenu = role
 
+        // 管理员与学生使用不同的底部菜单
         val menuRes = if (role == UserRole.ADMIN) {
             R.menu.bottom_nav_menu_admin
         } else {
@@ -125,9 +138,9 @@ class MainActivity : AppCompatActivity() {
 
         bottomNav.menu.clear()
         bottomNav.inflateMenu(menuRes)
-        bottomNav.setupWithNavController(navController)
         updateBottomNavVisibility(bottomNav, navController.currentDestination?.id)
 
+        // 若当前页面不属于新菜单，则回退到该角色的默认主页
         val currentDestinationId = navController.currentDestination?.id ?: return
         val inCurrentMenu = (0 until bottomNav.menu.size()).any { index ->
             bottomNav.menu.getItem(index).itemId == currentDestinationId
@@ -138,10 +151,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** 角色默认主页：管理员进管理页，学生进课程页。 */
     private fun defaultDestination(role: String): Int {
         return if (role == UserRole.ADMIN) R.id.nav_admin else R.id.nav_course
     }
 
+    /** 依据目标页决定是否隐藏底部导航栏（登录/找回/详情/地图页隐藏）。 */
     private fun updateBottomNavVisibility(bottomNav: BottomNavigationView, destinationId: Int?) {
         if (destinationId == null) {
             bottomNav.visibility = View.GONE

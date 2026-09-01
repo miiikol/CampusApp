@@ -38,6 +38,9 @@ interface MarketDao {
     )
     fun getAllItems(userId: String): Flow<List<MarketEntity>>
 
+    /**
+     * 按 id 查询单条二手商品（含当前用户的收藏状态）。
+     */
     @Query(
         """
         SELECT
@@ -58,6 +61,9 @@ interface MarketDao {
     )
     fun getItemById(userId: String, id: String): Flow<MarketEntity?>
 
+    /**
+     * 获取当前用户收藏的二手商品（按收藏时间倒序）。
+     */
     @Query(
         """
         SELECT
@@ -83,9 +89,6 @@ interface MarketDao {
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertItems(items: List<MarketEntity>)
-
-    @Query("UPDATE market_items SET status = :status WHERE id = :id")
-    suspend fun updateStatus(id: String, status: String?)
 
     /**
      * 清空二手商品表，一般用于刷新前清理旧缓存。

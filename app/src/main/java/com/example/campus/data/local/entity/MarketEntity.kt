@@ -22,8 +22,8 @@ data class MarketEntity(
     val description: String,
     val price: Double,
     val sellerId: String,
-    val imageUrl: String?, // Main image
+    val imageUrl: String?, // 主图 URL
     val publishTime: Long,
     val isFavorite: Boolean = false,
-    val status: String? = null
+    val status: String? = null // 商品状态（例如上架/已售/下架）
 )

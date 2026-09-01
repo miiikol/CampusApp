@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * 通知模块：通知列表与全部已读
+ */
+
+// 通知列表：按 sinceId 增量拉取，过滤历史占位通知
 if ($method === 'GET' && $path === '/notifications') {
   $userId = trim((string)($_GET['userId'] ?? ''));
 
@@ -42,6 +47,7 @@ if ($method === 'GET' && $path === '/notifications') {
   respond(200, $out);
 }
 
+// 全部已读：将当前用户所有未读通知标记为已读
 if ($method === 'POST' && $path === '/notifications/read-all') {
   $body = jsonBody();
   $userId = trim((string)($body['userId'] ?? ''));

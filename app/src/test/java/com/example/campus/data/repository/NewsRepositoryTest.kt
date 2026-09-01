@@ -17,6 +17,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
 
+/**
+ * 针对 [NewsRepository] 刷新逻辑的单元测试：
+ * 验证成功刷新覆盖缓存、异常时保留缓存与收藏状态。
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 class NewsRepositoryTest {
 
@@ -69,6 +73,7 @@ class NewsRepositoryTest {
         val result = repo.refreshNews()
 
         assertTrue(result is Resource.Success)
+        // 刷新成功后缓存被两条远程数据覆盖，并按 publishDate 倒序排列
         val after = dao.snapshot()
         assertEquals(listOf("n2", "n1"), after.map { it.id })
     }
@@ -99,6 +104,7 @@ class NewsRepositoryTest {
         val result = repo.refreshNews()
 
         assertTrue(result is Resource.Error)
+        // 网络异常时缓存保留，且原有收藏状态不丢失
         val after = dao.snapshot()
         assertEquals("old", after.single().id)
         assertTrue(after.single().isFavorite)

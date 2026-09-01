@@ -14,6 +14,7 @@ import androidx.navigation.fragment.findNavController
 import kotlinx.coroutines.launch
 import com.example.campus.R
 import com.example.campus.core.common.UserRole
+import com.example.campus.core.common.normalizeRole
 import com.example.campus.core.common.Resource
 import com.example.campus.core.ui.SnackType
 import com.example.campus.core.ui.showSnack
@@ -53,6 +54,7 @@ class LoginFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // 输入内容变化时清除对应输入框的错误提示
         binding.etStudentId.doAfterTextChanged {
             binding.tilStudentId.error = null
         }
@@ -108,7 +110,7 @@ class LoginFragment : Fragment() {
                             binding.tilPassword.isEnabled = true
                             showSnack(getString(R.string.login_success), type = SnackType.SUCCESS)
 
-                            val targetDestination = if (resource.data?.role == UserRole.ADMIN) {
+                            val targetDestination = if (normalizeRole(resource.data?.role) == UserRole.ADMIN) {
                                 R.id.nav_admin
                             } else {
                                 R.id.nav_course

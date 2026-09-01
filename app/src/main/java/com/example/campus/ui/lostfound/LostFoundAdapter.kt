@@ -46,9 +46,11 @@ class LostFoundAdapter(private val onItemClick: (LostFoundEntity) -> Unit) :
             binding.tvLocation.text = "地点: ${item.location}"
             binding.tvContact.text = "联系: ${item.contactInfo}"
             
+            // 按类型区分“寻物/招领”，并用不同颜色提示
             binding.tvType.text = if (item.type == "LOST") "寻物" else "招领"
             binding.tvType.setBackgroundColor(if (item.type == "LOST") Color.RED else Color.GREEN)
 
+            // 点击条目上抛回调，由页面决定进入详情或查看位置
             binding.root.setOnClickListener {
                 onItemClick(item)
             }

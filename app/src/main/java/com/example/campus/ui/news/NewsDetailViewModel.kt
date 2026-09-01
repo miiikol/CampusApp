@@ -41,12 +41,15 @@ class NewsDetailViewModel @Inject constructor(
     val comments: StateFlow<List<CommentDto>> = _comments.asStateFlow()
     private val _status = MutableStateFlow<Resource<Unit>>(Resource.Loading())
     val status: StateFlow<Resource<Unit>> = _status.asStateFlow()
+    // 评论提交/点赞/屏蔽等一次性操作结果，消费后由 clearActionStatus 重置
     private val _commentActionStatus = MutableStateFlow<Resource<String>?>(null)
     val commentActionStatus: StateFlow<Resource<String>?> = _commentActionStatus.asStateFlow()
     private val _isAdmin = MutableStateFlow(false)
     val isAdmin: StateFlow<Boolean> = _isAdmin.asStateFlow()
+    // 当前回复对象：非空表示正在回复某条评论，控制二级回复
     private val _replyTarget = MutableStateFlow<CommentDto?>(null)
     val replyTarget: StateFlow<CommentDto?> = _replyTarget.asStateFlow()
+    // 资讯点赞状态（点赞数 + 是否已赞）
     private val _newsLikeStatus = MutableStateFlow<NewsLikeStatusDto?>(null)
     val newsLikeStatus: StateFlow<NewsLikeStatusDto?> = _newsLikeStatus.asStateFlow()
     private val _userId = MutableStateFlow<String?>(null)
@@ -59,8 +62,7 @@ class NewsDetailViewModel @Inject constructor(
             viewModelScope.launch {
                 repository.getNewsById(newsId).collect { _news.value = it }
             }
-            refreshComments()
-            refreshNewsLikes()
+            // 评论与点赞状态依赖 userId，统一在下方用户流就绪后触发，避免重复请求
         }
 
         viewModelScope.launch {
@@ -74,6 +76,7 @@ class NewsDetailViewModel @Inject constructor(
         }
     }
 
+    /** 重新拉取评论列表，并更新加载状态。 */
     fun refreshComments() {
         if (newsId.isBlank()) return
         launch {
@@ -121,6 +124,7 @@ class NewsDetailViewModel @Inject constructor(
         }
     }
 
+    /** 拉取当前资讯的点赞状态。 */
     fun refreshNewsLikes() {
         if (newsId.isBlank()) return
         launch {
@@ -144,6 +148,7 @@ class NewsDetailViewModel @Inject constructor(
                         likeCount = resp.likeCount,
                         likedByMe = resp.liked
                     )
+                    // 尚未拿到点赞状态时，回拉一次确保计数准确
                     if (current == null) refreshNewsLikes()
                     _commentActionStatus.value = Resource.Success(if (resp.liked) "已点赞" else "已取消点赞")
                 }
@@ -183,6 +188,7 @@ class NewsDetailViewModel @Inject constructor(
         }
     }
 
+    /** 重置一次性操作状态，避免重复消费提示。 */
     fun clearActionStatus() {
         _commentActionStatus.value = null
     }

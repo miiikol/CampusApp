@@ -14,18 +14,19 @@ import com.example.campus.data.local.entity.MarketFavoriteEntity
  */
 @Dao
 interface MarketFavoriteDao {
+    /** 插入单条收藏，已存在则覆盖（REPLACE）。 */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFavorite(favorite: MarketFavoriteEntity)
 
+    /** 批量插入收藏，已存在则覆盖（REPLACE）。 */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFavorites(favorites: List<MarketFavoriteEntity>)
 
+    /** 删除用户对指定商品的收藏。 */
     @Query("DELETE FROM market_favorites WHERE userId = :userId AND itemId = :itemId")
     suspend fun deleteFavorite(userId: String, itemId: String)
 
+    /** 清空用户的全部收藏。 */
     @Query("DELETE FROM market_favorites WHERE userId = :userId")
     suspend fun clearUserFavorites(userId: String)
-
-    @Query("SELECT itemId FROM market_favorites WHERE userId = :userId")
-    suspend fun getFavoriteIds(userId: String): List<String>
 }

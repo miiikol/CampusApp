@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * 资讯模块：资讯列表/发布、收藏、评论、点赞相关接口
+ */
+
+// 资讯列表：带 30 秒缓存；登录用户附带收藏状态
 if ($method === 'GET' && $path === '/news') {
 
   $pg = parsePagination();
@@ -52,6 +57,7 @@ if ($method === 'GET' && $path === '/news') {
   respond(200, $response);
 }
 
+// 发布资讯：仅管理员可操作
 if ($method === 'POST' && $path === '/news') {
   $body = jsonBody();
 
@@ -98,6 +104,7 @@ if ($method === 'POST' && $path === '/news') {
   ]);
 }
 
+// 收藏/取消收藏：存在则删除，不存在则插入
 if ($method === 'POST' && preg_match('#^/news/([^/]+)/favorites/toggle$#', $path, $matches)) {
 
   $newsId = trim((string)$matches[1]);
@@ -119,6 +126,7 @@ if ($method === 'POST' && preg_match('#^/news/([^/]+)/favorites/toggle$#', $path
     $stmt0 = $pdo->prepare("SELECT 1 FROM news_favorites WHERE news_id = ? AND user_id = ? LIMIT 1");
     $stmt0->execute([$newsId, $userId]);
     $exists = $stmt0->fetch() ? true : false;
+    // 已收藏则取消收藏，否则新增收藏
     if ($exists) {
       $stmt1 = $pdo->prepare("DELETE FROM news_favorites WHERE news_id = ? AND user_id = ?");
       $stmt1->execute([$newsId, $userId]);
@@ -137,6 +145,7 @@ if ($method === 'POST' && preg_match('#^/news/([^/]+)/favorites/toggle$#', $path
   }
 }
 
+// 评论列表：按时间正序分页返回，登录用户附带点赞状态
 if ($method === 'GET' && preg_match('#^/news/([^/]+)/comments$#', $path, $matches)) {
 
   $newsId = (string)$matches[1];
@@ -223,6 +232,7 @@ if ($method === 'GET' && preg_match('#^/news/([^/]+)/comments$#', $path, $matche
   ]);
 }
 
+// 发布评论：支持回复父评论，并给被回复人发送通知
 if ($method === 'POST' && preg_match('#^/news/([^/]+)/comments$#', $path, $matches)) {
   if (!rateLimit('comment', 20, 60)) {
     respond(429, ['message' => '评论过于频繁，请稍后再试']);
@@ -250,6 +260,7 @@ if ($method === 'POST' && preg_match('#^/news/([^/]+)/comments$#', $path, $match
     respond(400, ['message' => '评论字数不能超过 300']);
   }
 
+  // 优先使用数据库中的最新昵称，客户端传值仅作兜底
   try {
     $stmtU = db()->prepare('SELECT username FROM users WHERE id = ? LIMIT 1');
     $stmtU->execute([$userId]);
@@ -274,8 +285,9 @@ if ($method === 'POST' && preg_match('#^/news/([^/]+)/comments$#', $path, $match
       respond(400, ['message' => '回复目标不存在']);
     }
     $parentIdValue = (int)$parent['id'];
-    $replyToUserIdValue = $replyToUserId !== '' ? $replyToUserId : (string)$parent['user_id'];
-    $replyToUsernameValue = $replyToUsername !== '' ? $replyToUsername : (string)$parent['username'];
+    // 回复目标固定为父评论作者，忽略客户端传入值，防止伪造目标向任意用户发送通知
+    $replyToUserIdValue = (string)$parent['user_id'];
+    $replyToUsernameValue = (string)$parent['username'];
   }
 
   if ($replyToUserIdValue !== null && $replyToUserIdValue !== '') {
@@ -295,6 +307,7 @@ if ($method === 'POST' && preg_match('#^/news/([^/]+)/comments$#', $path, $match
   $stmt->execute([$newsId, $userId, $username, $content, $parentIdValue, $replyToUserIdValue, $replyToUsernameValue, $publishTime]);
   $id = db()->lastInsertId();
 
+  // 回复评论时，给被回复人发送通知
   if ($parentIdValue !== null) {
     $targetUserId = $replyToUserIdValue;
     if ($targetUserId !== null && $targetUserId !== '' && $targetUserId !== $userId) {
@@ -330,6 +343,7 @@ if ($method === 'POST' && preg_match('#^/news/([^/]+)/comments$#', $path, $match
   ]);
 }
 
+// 点赞统计：返回点赞数与当前用户是否已点赞
 if ($method === 'GET' && preg_match('#^/news/([^/]+)/likes$#', $path, $matches)) {
 
   $newsId = (string)$matches[1];
@@ -347,6 +361,7 @@ if ($method === 'GET' && preg_match('#^/news/([^/]+)/likes$#', $path, $matches))
   respond(200, ['newsId' => $newsId, 'likeCount' => $count, 'likedByMe' => $liked]);
 }
 
+// 资讯点赞/取消点赞
 if ($method === 'POST' && preg_match('#^/news/([^/]+)/likes/toggle$#', $path, $matches)) {
 
   $newsId = (string)$matches[1];
@@ -390,6 +405,7 @@ if ($method === 'POST' && preg_match('#^/news/([^/]+)/likes/toggle$#', $path, $m
   }
 }
 
+// 评论点赞/取消点赞：点赞时通知评论作者
 if ($method === 'POST' && preg_match('#^/news/comments/([^/]+)/likes/toggle$#', $path, $matches)) {
 
   $commentId = trim((string)$matches[1]);
@@ -433,10 +449,12 @@ if ($method === 'POST' && preg_match('#^/news/comments/([^/]+)/likes/toggle$#', 
     $count = (int)($row['cnt'] ?? 0);
     $pdo->commit();
 
+    // 点赞时通知评论作者（先删除重复通知再插入）
     if ($liked) {
       $targetUserId = (string)($comment['user_id'] ?? '');
       if ($targetUserId !== '' && $targetUserId !== $userId) {
         try {
+          // 删除同评论的重复点赞通知，避免刷屏
           $stmtD = $pdo->prepare("DELETE FROM notifications WHERE user_id = ? AND type = 'COMMENT_LIKE' AND related_type = 'NEWS_COMMENT' AND related_id = ?");
           $stmtD->execute([$targetUserId, (string)$commentId]);
         } catch (Exception $e) { logError('comment_like: notification dedup', $e); }

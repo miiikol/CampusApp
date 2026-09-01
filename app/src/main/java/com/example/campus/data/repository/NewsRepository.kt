@@ -148,12 +148,15 @@ class NewsRepository @Inject constructor(
     /**
      * 切换资讯收藏状态（服务器 + 本地缓存）。
      */
-    suspend fun toggleFavorite(id: String, isFavorite: Boolean) {
+    suspend fun toggleFavorite(id: String) {
         val userId = userDao.getCurrentUser()?.id?.takeIf { it.isNotBlank() } ?: return
         val response = api.toggleNewsFavorite(id, FavoriteToggleRequest(userId))
         dao.updateFavorite(id, response.favorited)
     }
 
+    /**
+     * 获取指定资讯的评论列表（含回复结构，实时取远端，不落本地缓存）。
+     */
     suspend fun getComments(newsId: String, viewerUserId: String?): Resource<List<CommentDto>> {
         return try {
             Resource.Success(api.getNewsComments(newsId = newsId, userId = viewerUserId).data)
@@ -166,6 +169,9 @@ class NewsRepository @Inject constructor(
         }
     }
 
+    /**
+     * 发布评论；通过 parentCommentId / replyToUserId 等参数支持楼中楼回复。
+     */
     suspend fun createComment(
         newsId: String,
         userId: String,
@@ -197,6 +203,9 @@ class NewsRepository @Inject constructor(
         }
     }
 
+    /**
+     * 获取指定资讯的点赞状态（是否已赞及点赞数等）。
+     */
     suspend fun getNewsLikes(newsId: String, viewerUserId: String?): Resource<NewsLikeStatusDto> {
         return try {
             Resource.Success(api.getNewsLikes(newsId = newsId, userId = viewerUserId))
@@ -209,6 +218,9 @@ class NewsRepository @Inject constructor(
         }
     }
 
+    /**
+     * 切换资讯点赞状态，返回切换后的点赞结果。
+     */
     suspend fun toggleNewsLike(newsId: String, userId: String): Resource<LikeToggleResponse> {
         return try {
             Resource.Success(api.toggleNewsLike(newsId = newsId, request = LikeToggleRequest(userId)))
@@ -221,6 +233,9 @@ class NewsRepository @Inject constructor(
         }
     }
 
+    /**
+     * 切换评论点赞状态，返回切换后的点赞结果。
+     */
     suspend fun toggleCommentLike(commentId: String, userId: String): Resource<LikeToggleResponse> {
         return try {
             Resource.Success(api.toggleCommentLike(commentId = commentId, request = LikeToggleRequest(userId)))
@@ -233,6 +248,9 @@ class NewsRepository @Inject constructor(
         }
     }
 
+    /**
+     * 封禁违规评论，固定以“违规内容”为理由。
+     */
     suspend fun banComment(commentId: String, adminId: String): Resource<String> {
         return try {
             val resp = api.banComment(commentId, BanCommentRequest(adminId = adminId, reason = "违规内容"))

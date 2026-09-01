@@ -19,12 +19,14 @@ class FakeMarketDao(
 
     fun snapshot(): List<MarketEntity> = state.value
 
+    // 测试辅助：预设某用户的收藏 id 集合，用于验证收藏标记合并逻辑
     fun setFavorites(ids: Set<String>, uid: String) {
         favorites = ids
         userId = uid
     }
 
     override fun getAllItems(userId: String): Flow<List<MarketEntity>> {
+        // 查询时按预设收藏集合为商品打上收藏标记，并保持倒序
         return state.map { list ->
             list.map { item ->
                 if (favorites.contains(item.id)) item.copy(isFavorite = true) else item
@@ -51,12 +53,6 @@ class FakeMarketDao(
 
     override suspend fun insertItems(items: List<MarketEntity>) {
         state.value = items.sortedByDescending { it.publishTime }
-    }
-
-    override suspend fun updateStatus(id: String, status: String?) {
-        state.value = state.value.map {
-            if (it.id == id) it.copy(status = status) else it
-        }
     }
 
     override suspend fun clearItems() {

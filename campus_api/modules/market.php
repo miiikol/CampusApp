@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * 二手市场模块：商品列表、发布、收藏切换
+ */
+
+// 列表：返回已审核商品，带 30 秒缓存；登录用户附带收藏状态
 if ($method === 'GET' && $path === '/market') {
 
   $pg = parsePagination();
@@ -54,6 +59,7 @@ if ($method === 'GET' && $path === '/market') {
   respond(200, $response);
 }
 
+// 收藏/取消收藏：存在则删除，不存在则插入
 if ($method === 'POST' && preg_match('#^/market/([^/]+)/favorites/toggle$#', $path, $matches)) {
 
   $itemId = trim((string)$matches[1]);
@@ -93,6 +99,7 @@ if ($method === 'POST' && preg_match('#^/market/([^/]+)/favorites/toggle$#', $pa
   }
 }
 
+// 发布商品：管理员直接通过，普通用户进入待审核
 if ($method === 'POST' && $path === '/market') {
   $body = jsonBody();
 
@@ -104,19 +111,29 @@ if ($method === 'POST' && $path === '/market') {
   $imageUrl = $body['imageUrl'] ?? null;
   $publishTime = $body['publishTime'] ?? null;
 
-  // Token 鉴权
-  $auth = authenticateOptional();
-  if ($auth !== null && $auth['userId'] !== $sellerId) {
-    respond(403, ['message' => '无权代他人发布']);
-  }
+  // 发布必须登录；卖家身份以 Token 为准，忽略客户端传入的 sellerId，防止伪造管理员身份绕过审核
+  $auth = authenticate();
+  $sellerId = $auth['userId'];
 
   if ($id === '' || $title === '' || $description === '' || !is_numeric($price) || !is_numeric($publishTime)) {
     respond(400, ['message' => '字段不完整或类型错误']);
   }
 
+  // 价格必须为非负数且不超过合理上限
+  $price = (float)$price;
+  if ($price < 0 || $price > 100000000) {
+    respond(400, ['message' => '价格不合法']);
+  }
+
+  // 管理员发布直接通过审核，普通用户待审核
   $status = isAdminUserId($sellerId) ? 'APPROVED' : 'PENDING';
-  $stmt = db()->prepare("INSERT INTO market_items (id, title, description, price, seller_id, image_url, publish_time, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-  $stmt->execute([$id, $title, $description, $price, $sellerId, $imageUrl, (int)$publishTime, $status]);
+  try {
+    $stmt = db()->prepare("INSERT INTO market_items (id, title, description, price, seller_id, image_url, publish_time, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$id, $title, $description, $price, $sellerId, $imageUrl, (int)$publishTime, $status]);
+  } catch (Exception $e) {
+    logError('market publish', $e);
+    respond(400, ['message' => '商品发布失败，请重试']);
+  }
 
   // 写入后清除列表缓存
   cacheDeleteByPrefix('/market:');
@@ -125,7 +142,7 @@ if ($method === 'POST' && $path === '/market') {
     'id' => $id,
     'title' => $title,
     'description' => $description,
-    'price' => (float)$price,
+    'price' => $price,
     'sellerId' => $sellerId,
     'imageUrl' => $imageUrl,
     'publishTime' => (int)$publishTime,

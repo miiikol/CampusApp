@@ -1,6 +1,12 @@
 <?php
 
 /**
+ * 环境变量
+ *
+ * 从 .env 文件加载配置到环境变量，并提供 env() 便捷读取。
+ */
+
+/**
  * 加载 .env 文件到环境变量（不覆盖已存在的环境变量）
  */
 function loadEnv(string $envDir): void {
