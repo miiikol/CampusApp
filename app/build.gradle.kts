@@ -64,6 +64,18 @@ android {
             isMinifyEnabled = true
             manifestPlaceholders["usesCleartextTraffic"] = "false"
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+
+            // 仅当 local.properties 或环境变量提供完整签名信息时启用签名；
+            // 未配置时仍可产出未签名的 release 包，便于 CI 或本地验证。
+            val releaseConfig = signingConfigs.findByName("release")
+            if (
+                releaseConfig != null &&
+                !releaseConfig.keyAlias.isNullOrBlank() &&
+                !releaseConfig.storePassword.isNullOrBlank() &&
+                !releaseConfig.keyPassword.isNullOrBlank()
+            ) {
+                signingConfig = releaseConfig
+            }
         }
     }
     compileOptions {
@@ -95,23 +107,6 @@ android {
             storePassword = prop("RELEASE_STORE_PASSWORD")
             keyAlias = prop("RELEASE_KEY_ALIAS")
             keyPassword = prop("RELEASE_KEY_PASSWORD")
-        }
-    }
-
-    buildTypes {
-        release {
-            isMinifyEnabled = false
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-
-            val releaseConfig = signingConfigs.findByName("release")
-            if (
-                releaseConfig != null &&
-                !releaseConfig.keyAlias.isNullOrBlank() &&
-                !releaseConfig.storePassword.isNullOrBlank() &&
-                !releaseConfig.keyPassword.isNullOrBlank()
-            ) {
-                signingConfig = releaseConfig
-            }
         }
     }
 

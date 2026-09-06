@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.room.Room
 import com.example.campus.BuildConfig
 import com.example.campus.core.common.Constants
+import com.example.campus.core.common.SslPinning
 import com.example.campus.data.local.AppDatabase
 import com.example.campus.data.local.dao.*
 import com.example.campus.data.remote.ApiService
@@ -12,7 +13,6 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.runBlocking
-import okhttp3.CertificatePinner
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -64,14 +64,11 @@ object AppModule {
                 level = HttpLoggingInterceptor.Level.BODY
             })
         } else {
-            // Release 构建启用 SSL Certificate Pinning，防止中间人攻击
-            builder.certificatePinner(
-                CertificatePinner.Builder()
-                    // 预置泛域名 pin；部署前请将 hash 替换为你 HTTPS 证书的 SHA256 指纹
-                    // 获取方式: openssl s_client -connect your-api.com:443 </dev/null 2>/dev/null | openssl x509 -noout -pubkey | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | base64
-                    // .add("your-api.com", "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
-                    .build()
-            )
+            // Release 构建：当 BASE_URL 为 HTTPS 且配置了证书固定规则时启用 SSL Pinning。
+            // 本地 HTTP 联调（10.0.2.2）不会启用，避免误拦截。
+            if (SslPinning.isEnabled(Constants.BASE_URL)) {
+                builder.certificatePinner(SslPinning.buildPinner())
+            }
         }
 
         return builder.build()

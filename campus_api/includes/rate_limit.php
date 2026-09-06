@@ -32,35 +32,32 @@ function rateLimit(string $key, int $maxAttempts, int $windowSec): bool {
  * APCu 内存计数器（高并发首选）
  */
 function rateLimitApcu(string $ip, string $key, int $maxAttempts, int $windowSec): bool {
-  $cacheKey = "rl:{$ip}:{$key}";
+  // 计数与窗口起点分开存储：计数用纯整数，配合 apcu_inc 原子递增；
+  // 窗口起点单独存时间戳，用于判断窗口是否过期。
+  // 修复：旧实现把 "count|windowStart" 拼成字符串，apcu_inc 无法对字符串自增，导致限流形同虚设。
+  $countKey = "rl:{$ip}:{$key}:count";
+  $startKey = "rl:{$ip}:{$key}:start";
   $now = time();
   $windowStart = $now - $windowSec;
 
-  // 使用 APCu key + TTL 实现滑动窗口
-  // 格式: "count|windowStart"
-  $current = apcu_fetch($cacheKey);
-  if ($current === false) {
-    apcu_store($cacheKey, "1|{$now}", $windowSec);
+  $storedStart = apcu_fetch($startKey);
+
+  // 首次请求或窗口已过期：重置窗口起点并计数为 1
+  if ($storedStart === false || (int)$storedStart < $windowStart) {
+    apcu_store($startKey, $now, $windowSec);
+    apcu_store($countKey, 1, $windowSec);
     return true;
   }
 
-  $parts = explode('|', $current);
-  $count = (int)($parts[0] ?? 1);
-  $storedWindowStart = (int)($parts[1] ?? $now);
-
-  // 如果窗口已过期，重置计数
-  if ($storedWindowStart < $windowStart) {
-    apcu_store($cacheKey, "1|{$now}", $windowSec);
+  // 原子递增计数；apcu_inc 返回自增后的新值
+  $newCount = apcu_inc($countKey, 1, $success, $windowSec);
+  if ($success === false) {
+    // 计数键异常被清理：重置为 1 并放行本次（限流故障时偏向放行，避免阻塞业务）
+    apcu_store($countKey, 1, $windowSec);
     return true;
   }
 
-  if ($count >= $maxAttempts) {
-    return false;
-  }
-
-  // 原子递增
-  apcu_inc($cacheKey, 1, $success, $windowSec);
-  return true;
+  return $newCount <= $maxAttempts;
 }
 
 /**
